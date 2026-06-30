@@ -1,0 +1,3 @@
+type AnalyzeGame = {
+    username: string
+}
