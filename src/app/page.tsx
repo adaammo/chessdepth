@@ -20,7 +20,7 @@ export default function Home() {
       />
       <AnimatePresence>
     {success && (
-      <SuccessToast text = {"hi"} onClose = {() => setSuccess(false)}/>
+      <SuccessToast text = {"Username Found!"} onClose = {() => setSuccess(false)}/>
     )}
     </AnimatePresence>
 
@@ -82,6 +82,9 @@ export default function Home() {
 
           <p className="text-center text-xs text-(--text-muted)">
             No login required. We use public Chess.com game data using their PubAPI
+          </p>
+          <p className="text-center text-xs text-(--text-muted)">
+            For service reasons, only six months of data is used to evaluate your accuracy.
           </p>
         </form>
       </div>

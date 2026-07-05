@@ -1,3 +1,0 @@
-type AnalyzeGame = {
-    username: string
-}
