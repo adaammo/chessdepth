@@ -1,5 +1,5 @@
-import { AnimatePresence, easeInOut, motion } from "motion/react";
-import { CheckCircle, CircleX } from "lucide-react"
+import { easeInOut, motion } from "motion/react";
+import { CheckCircle } from "lucide-react"
 import { useEffect, useState } from "react";
 const TOAST_DURATION = 5000
 export default function SuccessToast({ text, onClose }: { text: string, onClose: () => void }) {

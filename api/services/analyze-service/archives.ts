@@ -1,6 +1,6 @@
 import axios, { isAxiosError } from "axios";
-import { CHESS_API_HEADERS, CHESS_URL_ARCHIVES } from "../lib/constants";
-import { ChessArchivesResponse, ChessGame, ChessMonthlyGamesResponse } from "../lib/types";
+import { CHESS_API_HEADERS, CHESS_URL_ARCHIVES } from "../../lib/constants";
+import { ChessArchivesResponse, ChessGame, ChessMonthlyGamesResponse } from "../../lib/types";
 
 export async function getPlayerArchives(username: string): Promise<string[]> {
     try {
@@ -20,9 +20,8 @@ export async function getPlayerArchives(username: string): Promise<string[]> {
         throw error;
     }
 }
-export async function ArchivesDestructor(archives: string[], username: string) : Promise<ChessGame[][]> {
+export async function ArchivesDestructor(archives: string[], username: string) : Promise<ChessGame[]> {
     try {
-        const url = CHESS_URL_ARCHIVES(username)
         const recentArchives = archives.slice(-6);
         if (recentArchives.length === 0) {
             throw new Error("NO_RECENT_GAMES");
@@ -34,8 +33,7 @@ export async function ArchivesDestructor(archives: string[], username: string) :
                 gameHistory.push(response.data.games)
             }
         }
-        console.log(gameHistory.length)
-        return gameHistory;
+        return gameHistory.flat();
     }
     catch (error) {
         if(isAxiosError(error)){

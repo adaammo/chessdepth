@@ -1,3 +1,5 @@
+import { AnalysisReport } from "../services/analyze-service/normalizeGames";
+
 export type AnalyzeGame = {
     username: string
 }
@@ -40,3 +42,76 @@ export type ChessGame = {
 export type ChessMonthlyGamesResponse = {
     games: ChessGame[];
   };
+
+  export type ChessComPlayerResult =
+  | "win"
+  | "checkmated"
+  | "agreed"
+  | "repetition"
+  | "timeout"
+  | "resigned"
+  | "stalemate"
+  | "lose"
+  | "insufficient"
+  | "50move"
+  | "abandoned"
+  | "kingofthehill"
+  | "threecheck"
+  | "timevsinsufficient";
+
+  export type GameOutcome = "win" | "draw" | "loss";
+
+  export type OpeningData = {
+    openingName: string;
+    openingVariation: string;
+    ecoUrl: string | null;
+  
+    games: number;
+    wins: number;
+    losses: number;
+    draws: number;
+  
+    score: number;
+    scorePercent: number;
+  
+    gameIds: string[];
+  };
+
+  export type GameData = {
+      url: string;
+      pgn: string;
+    
+      userColor: "white" | "black";
+      result: "win" | "loss" | "draw"
+    
+      openingName: string;
+      openingVariation: string;
+      ecoUrl: string | null;
+    
+      timeClass: string;
+      timeControl: string;
+    
+      chessComAccuracy?: number;
+    };
+
+    type AnalyzeControllerResponse = 
+      {
+        status: "completed";
+        jobId: string;
+        fromCache: true;
+        result: AnalysisReport;
+      }
+    | {
+        status: "processing";
+        jobId: string;
+        fromExistingJob: true;
+        state: "waiting" | "active" | "delayed";
+        result: null;
+      }
+    | {
+        status: "queued";
+        jobId: string;
+        fromExistingJob: false;
+        state: "waiting";
+        result: null;
+      };
