@@ -1,8 +1,8 @@
 "use server"
 import axios, { isAxiosError } from "axios"
-import { AnalyzeControllerResponse } from "./types";
+import { AnalysisReport, AnalyzeControllerResponse } from "./types";
 export async function PostChessUsername(username: string):
-    Promise<{ ok: true, msg: string, jobId: string, status: number } | { ok: false, msg: string, status: number }> {
+    Promise<{ status: "processing" | "added", msg: string, username: string, uuid: string, statusCode: number } | { status: "completed",  username: string, uuid: string, result: AnalysisReport} | { status: "failed", failedReason: string, statusCode: number }> {
     const api_key = process.env.API_KEY ?? ""
     const url = `${process.env.NEXT_PUBLIC_API_URL}/analyze`
     try {
@@ -11,49 +11,78 @@ export async function PostChessUsername(username: string):
                 "x-api-key": api_key
             }
         });
-        const message = res.data.status === "completed" ? "Game history analyzed" : res.data.status === "processing" ? "Analyzing..." : res.data.status === "queued" ? "Waiting to analyze..." : "Username found! Processing games";
-        return { ok: true, msg: message, jobId: res.data.jobId, status: 200 }
+        const message = res.data.status === "completed" ? "Game history analyzed" : res.data.status === "processing" ? "Analyzing..." :  "Username found! Processing games";
+        const status = res.data.status;
+        if(status === "added"){
+            return {
+                status,
+                msg: message,
+                username: res.data.username,
+                uuid: res.data.uuid,
+                statusCode: 200
+            }
+        }
+        if(status === "completed"){
+            return {
+                status,
+                username: res.data.username,
+                uuid: res.data.uuid,
+                result: res.data.result
+            }
+        }
+        return {
+            status,
+            msg: message,
+            username: res.data.username,
+            uuid: res.data.uuid,
+            statusCode: 200
+        }
     }
     catch (error) {
         if (isAxiosError(error)) {
             const status = error.response?.status;
-            const msg = error.response?.data.error as string;
-            return { ok: false, msg: msg ?? "Server is not communicating.", status: status ?? 500 }
+            const msg = error.response?.data.failedReason
+            return { status: "failed", failedReason: msg ?? "Server is not communicating.", statusCode: status ?? 500 }
         }
     }
     return {
-        ok: false,
-        msg: "Something went wrong...",
-        status: 503
+        status: "failed",
+        failedReason: "Something went wrong...",
+        statusCode: 503
     }
 }
 export async function ReadJobStatus(jobId: string):
-    Promise<{ ok: true, status: "completed" | "processing" | "queued" } | { ok: false, msg: string, status: number }> {
+    Promise<{ status: "completed", result: AnalysisReport } | { status: "processing" | "queued" } | {status: "failed" | "not_found" }> {
     try {
         const api_key = process.env.API_KEY ?? ""
         const url = `${process.env.NEXT_PUBLIC_API_URL}/jobs/${encodeURIComponent(jobId)}`
-        const response = await axios.get<{ status: "completed" | "processing" | "queued" }>(url,
+        const response = await axios.get<{ status: "processing" | "queued" } | { status: "completed", result: AnalysisReport }>(url,
             {
                 headers: {
                     "x-api-key": api_key
                 }
             })
-        return { ok: true, status: response.data.status }
+        if (response.data.status === "processing" || response.data.status === "queued") {
+            return {
+                status: response.data.status,
+            };
+        }
+        if (response.data.status === "completed") {
+            return { status: response.data.status, result: response.data.result }
+        }
     }
     catch (error) {
-        if (isAxiosError(error)) {
-            const msg = error.response?.data.message;
-            const status = error.response?.status;
+        if (isAxiosError<{ error: string }>(error)) {
+            console.log(error.response?.data);
+           const error_code = error.response?.status;
+           if(error_code === 404){
             return {
-                ok: false,
-                msg: msg,
-                status: status ?? 503
+                status: "not_found"
             }
+           }
         }
     }
     return {
-        ok: false,
-        msg: "Something went wrong...",
-        status: 503
+        status: "failed"
     }
 }

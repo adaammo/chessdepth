@@ -2,17 +2,19 @@
 import { motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 
-export default function HistoryLoading({ username }: { username: string }) {
+export default function HistoryLoading({ username, status }: { username: string, status: string }) {
     const CHESS_FACTS = useMemo(() => {
         return ([
             "The queen was once a very weak piece, only able to move one square diagonally.",
             "There are more possible chess games (10^120) than atoms (10^82) in the observable universe.",
             "The Sicilian Defense is the most played and highest-scoring response to 1.e4 at grandmaster level.",
             "The longest chess game theoretically possible is 5,949 moves.",
-            "The first chess computer program was written by Alan Turing in 1951 — by hand, since no computer could run it yet.",
+            "The first chess computer program was written by Alan Turing in 1951 by hand, since no computer could run it yet.",
             "Magnus Carlsen became a grandmaster at just 13 years old.",
             "Between July 31, 2018, and October 10, 2020, Carlsen played 125 consecutive classical games at the elite level without a single loss.",
-            "The developer of this website starting playing chess this year, you can find his profile on @sspiidey!"
+            "The developer of this website starting playing chess this year, you can find his profile on @sspiidey!",
+            "The phrase “zugzwang” describes a position where any move makes your position worse.",
+            "Some openings are named after players, like the Reti Opening, Nimzo-Indian Defense, and Alekhine Defense.",
         ])
     }, []);
 
@@ -22,9 +24,10 @@ export default function HistoryLoading({ username }: { username: string }) {
             setFactIndex(() => {
                 return Math.floor(Math.random() * CHESS_FACTS.length);
             })
-        }, 4000);
+        }, 4500);
         return () => clearInterval(interval);
-    }, [CHESS_FACTS])
+    }, [CHESS_FACTS]);
+
     return (
         <div className="min-w-full min-h-screen flex items-center justify-center">
             <motion.div
@@ -41,6 +44,7 @@ export default function HistoryLoading({ username }: { username: string }) {
                     <span className="loading loading-spinner loading-xl" />
                     <p className="font-black text-2xl">
                         Loading {username}&apos;s games
+
                     </p>
                     <span className="text-(--text-muted) font-light">
                         This usually takes some time

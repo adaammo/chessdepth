@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { AnalyzeGame } from "../lib/types";
 import { chess_queue } from "../lib/queue";
+import crypto from "crypto"
 export async function analyzeController(req: Request, res: Response, next: NextFunction) {
     console.log(`${req.method} ${req.url} ${res.statusCode}`);
     try {
@@ -11,15 +12,16 @@ export async function analyzeController(req: Request, res: Response, next: NextF
             })
         }
         const username = body.username
-        const jobId = username
+        const uuid = crypto.randomUUID();
+        const jobId = `analysis:${username}:${uuid}`
         const existingJob = await chess_queue.getJob(jobId);
         if (existingJob) {
             const state = await existingJob.getState();
             if (state === "completed") {
                 return res.status(200).json({
                     status: "completed",
-                    jobId,
-                    fromCache: false,
+                    username,
+                    uuid,
                     result: existingJob.returnvalue,
                 });
             }
@@ -27,22 +29,21 @@ export async function analyzeController(req: Request, res: Response, next: NextF
             if (state === "waiting" || state === "active" || state === "delayed") {
                 return res.status(202).json({
                     status: "processing",
-                    jobId,
-                    fromExistingJob: true,
-                    state,
-                    result: null,
+                    username,
+                    uuid,
                 });
             }
 
             if (state === "failed") {
                 return res.status(409).json({
                     status: "failed",
-                    jobId,
+                    username,
+                    uuid,
                     failedReason: existingJob.failedReason,
                 });
             }
         }
-        const job = await chess_queue.add("analyze-user", { username }, {
+        await chess_queue.add("analyze-user", { username }, {
             jobId: jobId,
             attempts: 3,
             removeOnComplete: { age: 60 * 5 },
@@ -51,8 +52,10 @@ export async function analyzeController(req: Request, res: Response, next: NextF
             },
         });
         return res.status(200).json({
+            status: "added",
             message: "Username Found! Waiting to analyze",
-            jobID: job.id
+            username: username,
+            uuid: uuid
         })
     }
     catch (error) {

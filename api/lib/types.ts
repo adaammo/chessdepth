@@ -83,7 +83,7 @@ export type ChessMonthlyGamesResponse = {
     
       userColor: "white" | "black";
       result: "win" | "loss" | "draw"
-    
+      fen: string
       openingName: string;
       openingVariation: string;
       ecoUrl: string | null;
@@ -91,7 +91,7 @@ export type ChessMonthlyGamesResponse = {
       timeClass: string;
       timeControl: string;
     
-      chessComAccuracy?: number;
+      chessComAccuracy?: number | undefined;
     };
 
     type AnalyzeControllerResponse = 

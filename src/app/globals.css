@@ -2,39 +2,39 @@
 @plugin "daisyui";
 
 :root {
-  --bg-primary: #111210;
-  --bg-secondary: #171612;
-  --bg-tertiary: #1f1f1f;
-  --bg-card: #141a17;
-  --bg-card-hover: #1a221e;
-  
+  --bg-primary: #111111;
+  --bg-secondary: #161616;
+  --bg-tertiary: #222222;
+
   --text-primary: #f0f2ee;
   --text-secondary: #aab5a6;
   --text-muted: #748070;
-  
+
   --border-subtle: #232625;
   --border-default: #333736;
   --border-strong: #4a4f4d;
-  
+
   --accent: #e8d9b8;
   --accent-hover: #f0e6cc;
   --accent-deep: #d4c49e;
   --accent-muted: rgba(232, 217, 184, 0.12);
-  
+
   --accent-blue: #6fb3d8;
   --accent-blue-muted: rgba(111, 179, 216, 0.12);
-  
-  --success: #22c55e;
-  --warning: #facc15;
-  --danger: #ef4444;
-  
-  --button-primary-bg: #e8d9b8;
-  --button-primary-text: #0d1110;
-  --button-primary-hover: #f0e6cc;
+
+  --success: #19a129;   
+  --warning: #c9943a;  
+  --danger: #c03232;
+
+  --button-bg: #e8d9b8;
+  --button-text: #0d1110;
+  --button-hover: #f0e6cc;
   --button-secondary-bg: #181f1c;
   --button-secondary-text: #f0f2ee;
   --button-secondary-hover: #1a221e;
-};
+}
+
+;
 
 body {
   background: var(--background);

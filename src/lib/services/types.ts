@@ -1,24 +1,22 @@
 export type AnalyzeControllerResponse =
     {
         status: "completed";
-        jobId: string;
-        fromCache: true;
+        username: string,
+        uuid: string
         result: AnalysisReport;
     }
     | {
         status: "processing";
-        jobId: string;
-        fromExistingJob: true;
-        state: "waiting" | "active" | "delayed";
+        username: string,
+        uuid: string
         result: null;
     }
-    | {
-        status: "queued";
-        jobId: string;
-        fromExistingJob: false;
-        state: "waiting";
+    |  {
+        status: "added";
+        username: string,
+        uuid: string
         result: null;
-    };
+    }
 
 export type AnalysisReport = {
     username: string,
@@ -47,7 +45,7 @@ export type OpeningData = {
   
     userColor: "white" | "black";
     result: "win" | "loss" | "draw"
-  
+    fen: string
     openingName: string;
     openingVariation: string;
     ecoUrl: string | null;
@@ -55,5 +53,5 @@ export type OpeningData = {
     timeClass: string;
     timeControl: string;
   
-    chessComAccuracy?: number;
+    chessComAccuracy?: number | undefined;
   };

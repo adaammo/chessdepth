@@ -13,22 +13,24 @@ export async function NormalizationOfGames(games: ChessGame[], username: string)
     const gameStats = new Map<string, GameData>();
     for (const game of games) {
         const isWhite = game.white.username.toLowerCase() === username.toLowerCase();
+        const userColor = isWhite ? "white" : "black";
         const playerResult = isWhite ? game.white.result : game.black.result;
         const outcome = getGameOutcome(playerResult);
         const score = getOutcomeScore(outcome);
         const openingKey = getOpeningKey(game.eco ?? "");
         const {family, variation} = ecoRegexHelper(openingKey)
+        // Create a profiles object for pfp next
         if(!gameStats.has(game.uuid)){
-            const userColor = isWhite ? "white" : "black";
             const result = score === 1 ? "win" : score === 0.5 ? "draw" : "loss";
             const timeClass = game.time_class
             const timeControl = game.time_control;
-            const chessComAccuracy = (userColor === "white" ? game.accuracies?.white : game.accuracies?.black) ?? 0;
+            const chessComAccuracy = (userColor === "white" ? game.accuracies?.white : game.accuracies?.black)
             gameStats.set(game.uuid, {
                 url: game.url,
                 pgn: game.pgn,
                 userColor,
                 result,
+                fen: game.fen,
                 timeClass,
                 timeControl,
                 chessComAccuracy,
@@ -38,8 +40,8 @@ export async function NormalizationOfGames(games: ChessGame[], username: string)
             })
 
         }
-        if (!openingStats.has(openingKey)) {
-            openingStats.set(openingKey, {
+        if (!openingStats.has(family)) {
+            openingStats.set(family, {
               ecoUrl: game.url,
               wins: 0,
               games: 0,
@@ -52,7 +54,7 @@ export async function NormalizationOfGames(games: ChessGame[], username: string)
               score: 0,
             });
           }
-        const opening = openingStats.get(openingKey)!;
+        const opening = openingStats.get(family)!;
         opening.games += 1;
         opening.score += score;
         opening.gameIds.push(game.uuid);
