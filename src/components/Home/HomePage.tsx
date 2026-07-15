@@ -88,7 +88,7 @@ export default function HomePage() {
                         type="submit"
                         className="w-full cursor-pointer rounded-xl border border-(--border-default) bg-(--button-bg) py-3 font-bold text-black transition duration-300 hover:opacity-80">
                         {isPending ? (
-                            <span className="loading loading-lg loading-dots" />
+                            <span className="loading loading-lg loading-dots cursor-pointer" />
                         ) : (
                             "Analyze Opening"
                         )}

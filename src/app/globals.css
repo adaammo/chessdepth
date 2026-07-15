@@ -8,7 +8,7 @@
 
   --text-primary: #f0f2ee;
   --text-secondary: #aab5a6;
-  --text-muted: #748070;
+  --text-muted: #747574;
 
   --border-subtle: #232625;
   --border-default: #333736;
@@ -22,9 +22,10 @@
   --accent-blue: #6fb3d8;
   --accent-blue-muted: rgba(111, 179, 216, 0.12);
 
-  --success: #19a129;   
+  --success: #168c24;   
   --warning: #c9943a;  
   --danger: #c03232;
+  --brilliant: #0fa4b8;
 
   --button-bg: #e8d9b8;
   --button-text: #0d1110;

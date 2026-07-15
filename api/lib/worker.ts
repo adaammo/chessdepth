@@ -7,10 +7,15 @@ import { AnalysisReport, NormalizationOfGames } from "../services/analyze-servic
 const QUEUE_NAME = "analysis"
 const worker = new Worker<QueuePayload, AnalysisReport>(QUEUE_NAME, 
     async (job) => {
+      try{
         const { username } = job.data;
         const response = await analyzeUser(username);
         const frontendData = await NormalizationOfGames(response, username);
         return frontendData;
+      } catch (error){
+        console.error(`Job: ${job.id}, failed: ${error}`)
+        throw error;
+      }
     },
     {
     stalledInterval: 15000,

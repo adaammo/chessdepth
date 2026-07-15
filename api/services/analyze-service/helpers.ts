@@ -38,12 +38,21 @@ export function getOpeningKey(ecoUrl: string | null): string {
 
   return ecoUrl.split("/openings/")[1] ?? ecoUrl;
 }
-export function ecoRegexHelper(ecoName: string | null): {family: string, variation: string} {
-  if (!ecoName || ecoName == "Undefined") return {family: "Unknown-Opening", variation: ""};
+export function ecoRegexHelper(
+  ecoName: string | null
+): { family: string; variation: string } {
+  if (!ecoName || ecoName === "Undefined") {
+    return {
+      family: "Unknown-Opening",
+      variation: "",
+    };
+  }
+
   const withoutSuffix = ecoName.replace(
     /(?:[-\s]+\d+\.{1,3}.*|\.{3}\d+\..*)$/g,
     ""
   );
+
   const PRIMARY_ENDINGS = ["Accepted", "Declined"];
 
   const SECONDARY_ENDINGS = [
@@ -56,29 +65,31 @@ export function ecoRegexHelper(ecoName: string | null): {family: string, variati
     "System",
     "Countergambit",
   ];
-  const noSuffix = withoutSuffix.replace(/-/g, ' ');
+
+  const noSuffix = withoutSuffix.replace(/-/g, " ");
+
   const words = noSuffix.trim().split(/\s+/);
 
-  for (let i = 0; i < words.length; i++) {
-    if (PRIMARY_ENDINGS.includes(words[i])) {
-      return {
-        family: words.slice(0, i + 1).join(" "),
-        variation: words.slice(i + 1).join(" ") || "",
-      };
-    }
-  }
+  const familyEndingIndex = words.findIndex((word) =>
+    SECONDARY_ENDINGS.includes(word)
+  );
 
-  for (let i = 0; i < words.length; i++) {
-    if (SECONDARY_ENDINGS.includes(words[i])) {
-      return {
-        family: words.slice(0, i + 1).join(" "),
-        variation: words.slice(i + 1).join(" ") || "",
-      };
+  if (familyEndingIndex !== -1) {
+    let finalFamilyIndex = familyEndingIndex;
+    const nextWord = words[familyEndingIndex + 1];
+
+    if (nextWord && PRIMARY_ENDINGS.includes(nextWord)) {
+      finalFamilyIndex++;
     }
+
+    return {
+      family: words.slice(0, finalFamilyIndex + 1).join(" "),
+      variation: words.slice(finalFamilyIndex + 1).join(" "),
+    };
   }
 
   return {
-    family: ecoName,
+    family: noSuffix,
     variation: "",
   };
 }

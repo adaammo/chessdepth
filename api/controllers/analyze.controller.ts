@@ -47,9 +47,7 @@ export async function analyzeController(req: Request, res: Response, next: NextF
             jobId: jobId,
             attempts: 3,
             removeOnComplete: { age: 60 * 5 },
-            removeOnFail: {
-                age: 24 * 60 * 60,
-            },
+            removeOnFail: true
         });
         return res.status(200).json({
             status: "added",

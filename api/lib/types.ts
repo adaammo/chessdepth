@@ -1,5 +1,8 @@
 import { AnalysisReport } from "../services/analyze-service/normalizeGames";
-
+export type OpeningStats = {
+    openingName: string,
+    count: number
+}
 export type AnalyzeGame = {
     username: string
 }
@@ -8,11 +11,13 @@ export type ChessArchivesResponse = {
 };
 // for monthlychesstype
 type ChessPlayer = {
+    
     rating: number;
     result: string;
     "@id": string;
     username: string;
     uuid: string;
+    avatar: string
   };
 
   
@@ -22,6 +27,7 @@ export type ChessGame = {
     time_control: string;
     end_time: number;
     rated: boolean;
+    
 
     accuracies?: {
         white: number;
@@ -29,7 +35,7 @@ export type ChessGame = {
     };
     tcn?: string;
     uuid: string;
-
+    
     initial_setup: string;
     fen: string;
     start_time?: number;
@@ -63,31 +69,76 @@ export type ChessMonthlyGamesResponse = {
 
   export type OpeningData = {
     openingName: string;
-    openingVariation: string;
+    openingVariations: Set<string>
     ecoUrl: string | null;
-  
-    games: number;
-    wins: number;
-    losses: number;
-    draws: number;
-  
-    score: number;
-    scorePercent: number;
-  
+
+    white: {
+    whiteScore: number;
+    whitePercentage: number;
+    whiteGames: number,
+    whiteWins: number,
+    whiteLosses: number,
+    whiteDraws: number
+    }
+    black: {
+      blackScore: number;
+      blackPercentage: number;
+      blackGames: number,
+      blackWins: number,
+      blackLosses: number,
+      blackDraws: number
+    }
     gameIds: string[];
   };
+  type ChessComAccountStatus =
+  | "closed"
+  | "closed:fair_play_violations"
+  | "basic"
+  | "premium"
+  | "mod"
+  | "staff";
 
+type UrlString = string;
+
+export type PlayerProfile = {
+  "@id": UrlString;
+  url: UrlString; 
+  username: string;
+  player_id: number;
+
+  title?: string;
+  status: ChessComAccountStatus;
+  name?: string;
+  avatar?: UrlString;
+  location?: string;
+  country: UrlString;
+
+  joined: number;
+  last_online: number;
+  followers: number;
+
+  is_streamer?: boolean;
+  twitch_url?: UrlString;
+  fide?: number;
+};
+
+export type PlayerPayload = {
+  username: string;
+  avatar: string;
+  stats: ChessComPlayerStats;
+}
   export type GameData = {
       url: string;
       pgn: string;
-    
+      date: number;
+      opponentUsername: string
       userColor: "white" | "black";
       result: "win" | "loss" | "draw"
       fen: string
       openingName: string;
       openingVariation: string;
       ecoUrl: string | null;
-    
+
       timeClass: string;
       timeControl: string;
     
@@ -114,4 +165,30 @@ export type ChessMonthlyGamesResponse = {
         fromExistingJob: false;
         state: "waiting";
         result: null;
+      };
+
+      type ChessRating = {
+        last: {
+          rating: number;
+          date: number; 
+          rd: number;
+        };
+      
+        best: {
+          rating: number;
+          date: number; 
+          game: string;
+        };
+      
+        record: {
+          win: number;
+          loss: number;
+          draw: number;
+        };
+      };
+      
+      export type ChessComPlayerStats = {
+        chess_rapid: ChessRating;
+        chess_bullet: ChessRating;
+        chess_blitz: ChessRating;
       };
