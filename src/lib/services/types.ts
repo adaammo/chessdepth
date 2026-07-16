@@ -28,6 +28,7 @@ export type AnalysisReport = {
   highestSeen: OpeningStats
   overallWinRate: number
   bestOutcome: OpeningStats
+  totalGames: number
 }
 
 export type OpeningData = {

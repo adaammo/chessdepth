@@ -30,3 +30,13 @@ export async function getJobId(req: Request<{jobId: string}>, res: Response, nex
         return res.status(500).json({ error: "Internal server error." })
     }
 }
+// usually limit will  be like 10-15 for this
+export async function getGamesFromJob(req: Request<{offset: number, limit: number}>, res: Response, next: NextFunction){
+    console.log(`${req.method} ${req.url} ${res.statusCode}`);
+    try{
+        
+    }
+    catch{
+        
+    }
+}

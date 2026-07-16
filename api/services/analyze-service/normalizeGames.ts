@@ -11,6 +11,7 @@ export type AnalysisReport = {
     highestSeen: OpeningStats
     overallWinRate: number
     bestOutcome: OpeningStats
+    totalGames: number
 }
 
 
@@ -158,7 +159,8 @@ export async function NormalizationOfGames(games: ChessGame[], username: string)
         bestOutcome: {
             openingName: bestOutcomeOpening,
             count: bestOutcomeWinRate
-        }
+        },
+        totalGames
     }
 }
 

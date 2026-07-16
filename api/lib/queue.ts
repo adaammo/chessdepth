@@ -7,4 +7,7 @@ export type QueuePayload = {
 
 export const chess_queue = new Queue<QueuePayload, AnalysisReport>("analysis", {
     connection: redisConnection
+
 })
+// do not change, chess.com api allows infinite serial requests, but parallel requests will be flagged
+chess_queue.setGlobalConcurrency(1);

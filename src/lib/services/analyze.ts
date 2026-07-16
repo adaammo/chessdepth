@@ -56,6 +56,7 @@ export async function ReadJobStatus(jobId: string):
     try {
         const api_key = process.env.API_KEY ?? ""
         const url = `${process.env.NEXT_PUBLIC_API_URL}/jobs/${encodeURIComponent(jobId)}`
+        console.log(url);
         const response = await axios.get<{ status: "processing" | "queued" } | { status: "completed", result: AnalysisReport }>(url,
             {
                 headers: {

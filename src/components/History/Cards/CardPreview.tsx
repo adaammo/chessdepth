@@ -24,7 +24,7 @@ export default function CardPreview({ data, games, scorePercent, progressBg, sid
                 gameIds: stringKey,
                 games: result.games
             })}
-            className={`${rowGridConst} hover:opacity-75 font-medium cursor-pointer duration-200 
+            className={`${rowGridConst} hover:opacity-75 font-medium cursor-pointer duration-200 border-b border-(--accent-muted)
 ${result?.bestOutcome?.openingName === data.openingName
                     ? `
                 bg-linear-to-r
@@ -35,7 +35,7 @@ ${result?.bestOutcome?.openingName === data.openingName
               border-l
                border-(--accent)
               `
-                    : "bg-(--bg-secondary)"
+                    : "bg-(--bg-primary)"
                 }`}>
             <span className="text-(--text-muted)">
                 {index}
