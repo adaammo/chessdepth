@@ -1,6 +1,7 @@
 "use server"
 import axios, { isAxiosError } from "axios"
 import { AnalysisReport, AnalyzeControllerResponse } from "./types";
+import { GamesAPIResponse, ProfileDatabase } from "@/api/lib/types";
 export async function PostChessUsername(username: string):
     Promise<{ status: "processing" | "added", msg: string, username: string, uuid: string, statusCode: number } | { status: "completed",  username: string, uuid: string, result: AnalysisReport} | { status: "failed", failedReason: string, statusCode: number }> {
     const api_key = process.env.API_KEY ?? ""
@@ -56,13 +57,13 @@ export async function ReadJobStatus(jobId: string):
     try {
         const api_key = process.env.API_KEY ?? ""
         const url = `${process.env.NEXT_PUBLIC_API_URL}/jobs/${encodeURIComponent(jobId)}`
-        console.log(url);
         const response = await axios.get<{ status: "processing" | "queued" } | { status: "completed", result: AnalysisReport }>(url,
             {
                 headers: {
                     "x-api-key": api_key
                 }
             })
+            
         if (response.data.status === "processing" || response.data.status === "queued") {
             return {
                 status: response.data.status,
@@ -74,9 +75,63 @@ export async function ReadJobStatus(jobId: string):
     }
     catch (error) {
         if (isAxiosError<{ error: string }>(error)) {
-            console.log(error.response?.data);
            const error_code = error.response?.status;
            if(error_code === 404){
+            return {
+                status: "not_found"
+            }
+           }
+        }
+    }
+    return {
+        status: "failed"
+    }
+}
+export async function chessProfile(username: string): Promise<{status: "completed", profile: ProfileDatabase} | {status: "failed" | "not_found"}>{
+    try{
+        const api_key = process.env.API_KEY ?? ""
+        const url = `${process.env.NEXT_PUBLIC_API_URL}/jobs/profile/${encodeURIComponent(username)}`
+        const response = await axios.get<{ status: "completed", profile: ProfileDatabase }>(url,
+            {
+                headers: {
+                    "x-api-key": api_key
+                },
+            })
+        return {status: "completed", profile: response.data.profile};
+    }
+    catch (error) {
+        if (isAxiosError<{ error: string }>(error)) {
+            console.log("");
+           const error_code = error.response?.status;
+           if(error_code === 401){
+            return {
+                status: "not_found"
+            }
+           }
+        }
+    }
+    return {
+        status: "failed"
+    }
+}
+export async function getOpeningGames(offset: string, opening: string, side: "white" | "black", username: string) : 
+Promise<{status: "completed", profile: GamesAPIResponse} | {status: "failed" | "not_found"}>{
+    try{
+        const api_key = process.env.API_KEY ?? ""
+        const url = `${process.env.NEXT_PUBLIC_API_URL}/games/${encodeURIComponent(opening)}/${encodeURIComponent(side)}/${encodeURIComponent(username)}/${encodeURIComponent(offset)}`
+        const response = await axios.get<GamesAPIResponse>(url,
+            {
+                headers: {
+                    "x-api-key": api_key
+                },
+            })
+        return {status: "completed", profile: response.data};
+    }
+    catch (error) {
+        if (isAxiosError<{ error: string }>(error)) {
+           const error_code = error.response?.status;
+           console.log(error.response);
+           if(error_code === 401){
             return {
                 status: "not_found"
             }

@@ -1,5 +1,5 @@
 "use client"
-import { SetStateAction, useMemo, useState } from "react";
+import { SetStateAction, useMemo, useState, useTransition } from "react";
 import HistoryLoading from "./HistoryLoading";
 import { GameData, OpeningData } from "@/src/lib/services/types";
 import HistoryErrorPage from "./HistoryErrorPage";
@@ -10,51 +10,51 @@ import { ChevronDown, Crosshair, ExternalLink, TimerIcon, Zap } from "lucide-rea
 import CardPreview from "./Cards/CardPreview";
 import useHistory from "@/src/hooks/useHistory";
 import GameSideBar from "./GameSidebar";
-
-export type GamesPopup = {
-    opening: OpeningData,
-    gameIds: string[],
-    games: Record<string, GameData>
+import { GamesAPIResponse } from "@/api/lib/types";
+export type GamesPopUp = {
+    opening_name: string, wins: number, losses: number, draws: number;
 }
 export default function MainHistoryPage({ slug, uuid }: { slug: string, uuid: string }) {
     const [side, setSide] = useState<"white" | "black">("white");
+    const [games, setGames] = useState<GamesAPIResponse | null>(null);
     const [filter, setFilter] = useState<"sorted_asc_games" | "sorted_desc_games" | "sort_asc_accuracy" | "sort_desc_accuracy">("sorted_desc_games");
-    const [gamesPopUp, setGamesPopUp] = useState<GamesPopup | null>(null);
+    const [gamesPopUp, setGamesPopUp] = useState<GamesPopUp | null>(null);
     const rowGridForOpenings = "grid grid-cols-[38px_minmax(0,0.8fr)_minmax(140,0.8fr)_135px_25px] gap-x-4 items-center p-4"
-    const { result, status } = useHistory(slug, uuid);
+    const { result, status, setStatus } = useHistory(slug, uuid);
     const [dataView, setDataView] = useState<"games" | "openings">("openings");
+    const [isPending, startTransition] = useTransition();
     useMemo(() => {
         switch (filter) {
             case "sort_asc_accuracy": {
                 if (side === "white") {
-                    result?.openings.sort((a, b) => a.white.whitePercentage - b.white.whitePercentage);
+                    result?.opening_stats.sort((a, b) => a.white.whitePercentage - b.white.whitePercentage);
                     break;
                 }
-                result?.openings.sort((a, b) => a.black.blackPercentage - b.black.blackPercentage);
+                result?.opening_stats.sort((a, b) => a.black.blackPercentage - b.black.blackPercentage);
                 break;
             }
             case "sort_desc_accuracy": {
                 if (side === "white") {
-                    result?.openings.sort((a, b) => b.white.whitePercentage - a.white.whitePercentage);
+                    result?.opening_stats.sort((a, b) => b.white.whitePercentage - a.white.whitePercentage);
                     break;
                 }
-                result?.openings.sort((a, b) => b.black.blackPercentage - a.black.blackPercentage);
+                result?.opening_stats.sort((a, b) => b.black.blackPercentage - a.black.blackPercentage);
                 break;
             }
             case "sorted_asc_games": {
                 if (side === "white") {
-                    result?.openings.sort((a, b) => a.white.whiteGames - b.white.whiteGames);
+                    result?.opening_stats.sort((a, b) => a.white.whiteGames - b.white.whiteGames);
                     break;
                 }
-                result?.openings.sort((a, b) => a.black.blackGames - b.black.blackGames);
+                result?.opening_stats.sort((a, b) => a.black.blackGames - b.black.blackGames);
                 break;
             }
             case "sorted_desc_games": {
                 if (side === "white") {
-                    result?.openings.sort((a, b) => b.white.whiteGames - a.white.whiteGames);
+                    result?.opening_stats.sort((a, b) => b.white.whiteGames - a.white.whiteGames);
                     break;
                 }
-                result?.openings.sort((a, b) => b.black.blackGames - a.black.blackGames);
+                result?.opening_stats.sort((a, b) => b.black.blackGames - a.black.blackGames);
                 break;
             }
         }
@@ -68,7 +68,7 @@ export default function MainHistoryPage({ slug, uuid }: { slug: string, uuid: st
             <>
                 <GameSideBar
                     gamesPopUp={gamesPopUp}
-                    result={result}
+                    games = {games}
                     setGamesPopUp={setGamesPopUp}
                     side={side}
                 />
@@ -78,8 +78,8 @@ export default function MainHistoryPage({ slug, uuid }: { slug: string, uuid: st
                         <div className="grid w-full overflow-hidden rounded-md border border-(--border-subtle) bg-(--bg-secondary) shadow-md shadow-black/30 lg:grid-cols-[245px_minmax(0,1fr)]">
                             <div className="flex flex-col items-center justify-center border-b border-(--border-subtle) px-5 py-6 text-center lg:border-r lg:border-b-0">
                                 <Image
-                                    alt={`${result?.profile.username ?? "Chess player"} profile`}
-                                    src={result?.profile.avatar ?? "/blank-profile-black.jpg"}
+                                    alt={`${result?.username ?? "Chess player"} profile`}
+                                    src={result?.profile_pic ?? "/default-pfp-dark.jpg"}
                                     width={80}
                                     height={80}
                                     quality={100}
@@ -88,13 +88,13 @@ export default function MainHistoryPage({ slug, uuid }: { slug: string, uuid: st
                                 />
 
                                 <span className="mt-3 max-w-full truncate text-xl font-semibold">
-                                    {result?.profile.username}
+                                    {result?.username}
                                 </span>
 
                                 <a
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    href={`https://www.chess.com/member/${result?.profile.username}`}
+                                    href={`https://www.chess.com/member/${result?.profile_url}`}
                                     className="mt-2 flex items-center gap-1 text-sm text-(--text-muted) transition-colors duration-200 hover:text-(--text-secondary)"
                                 >
                                     <ExternalLink size={14} />
@@ -107,7 +107,7 @@ export default function MainHistoryPage({ slug, uuid }: { slug: string, uuid: st
                                     <MetricTemplate
                                         label="Rapid"
                                         value={
-                                            result?.profile.stats.chess_rapid?.last?.rating ?? "—"
+                                            result?.rapid_rating ?? "—"
                                         }
                                         icon={TimerIcon}
                                         className="border-r border-(--border-subtle)"
@@ -117,7 +117,7 @@ export default function MainHistoryPage({ slug, uuid }: { slug: string, uuid: st
                                     <MetricTemplate
                                         label="Blitz"
                                         value={
-                                            result?.profile.stats.chess_blitz?.last?.rating ?? "—"
+                                            result?.blitz_rating ?? "—"
                                         }
                                         icon={Zap}
                                         className="border-r border-(--border-subtle)"
@@ -127,7 +127,7 @@ export default function MainHistoryPage({ slug, uuid }: { slug: string, uuid: st
                                     <MetricTemplate
                                         label="Bullet"
                                         value={
-                                            result?.profile.stats.chess_bullet?.last?.rating ?? "—"
+                                            result?.bullet_rating ?? "—"
                                         }
                                         icon={Crosshair}
                                         rating
@@ -137,24 +137,24 @@ export default function MainHistoryPage({ slug, uuid }: { slug: string, uuid: st
                                 <div className="grid lg:grid-cols-3 lg:grid-rows-1 grid-rows-3">
                                     <MetricTemplate
                                         label="Score"
-                                        value={((result?.overallWinRate ?? 0) * 100).toFixed(2) + "%"}
+                                        value={((result?.win_rate ?? 0) * 100).toFixed(2) + "%"}
                                         detail={"overall"}
                                         className="border-r border-(--border-subtle)"
                                     />
                                     <MetricTemplate
                                         label="Most seen opening"
-                                        value={result?.highestSeen.openingName ?? "-"}
+                                        value={result?.highest_seen_opening ?? "-"}
                                         detail={
-                                            result?.highestSeen.count
-                                                ? `${result?.highestSeen.count} games`
+                                            result?.highest_seen_opening_count
+                                                ? `${result?.highest_seen_opening_count} games`
                                                 : undefined
                                         }
                                         className="border-r border-(--border-subtle)"
                                     />
                                     <MetricTemplate
                                         label="Best outcome"
-                                        value={result?.bestOutcome.openingName ?? "-"}
-                                        detail={((result?.bestOutcome.count ?? 0) * 100).toFixed(2) + "%"}
+                                        value={result?.best_outcome_opening ?? "-"}
+                                        detail={((result?.best_outcome_opening_count ?? 0) * 100).toFixed(2) + "%"}
                                         className="border-r border-(--border-subtle)"
                                     />
                                 </div>
@@ -167,7 +167,7 @@ export default function MainHistoryPage({ slug, uuid }: { slug: string, uuid: st
                                 Openings {''}
                                 <span
                                     className={`px-2 py-1 bg-(--accent-muted) font-semibold text-xs rounded-lg ${dataView === "openings" && "text-(--accent)"}`}>
-                                    {result?.openings.length}
+                                    {result?.opening_stats.length}
                                 </span>
                             </p>
                             <p
@@ -176,7 +176,7 @@ export default function MainHistoryPage({ slug, uuid }: { slug: string, uuid: st
                                 Games {''}
                                 <span
                                     className={`px-2 py-1 bg-(--accent-muted) font-semibold text-xs rounded-lg ${dataView === "games" && "text-(--accent)"}`}>
-                                    {result?.totalGames}
+                                    {result?.total_games}
                                 </span>
                             </p>
                         </div>
@@ -250,28 +250,30 @@ export default function MainHistoryPage({ slug, uuid }: { slug: string, uuid: st
                                         </span>
                                     </div>
                                     <AnimatePresence>
-                                        {result?.openings.map((data, i) => {
+                                        {result?.opening_stats.map((data, i) => {
                                             const scorePercent = side === "white" ? data.white.whitePercentage : data.black.blackPercentage;
-                                            const progressBg = BackgroundPercentageBar(scorePercent);
-                                            const stringKey: string[] = data.gameIds;
-                                            const games = side === "white" ? data.white.whiteGames : data.black.blackGames;
-                                            if (games === 0) {
+                                            const openingGameCount = side === "white" ? data.white.whiteGames : data.black.blackGames;
+                                            if (openingGameCount === 0) {
                                                 return;
                                             }
                                             return (
                                                 <CardPreview
                                                     key={data.openingName}
                                                     data={data}
-                                                    games={games}
-                                                    progressBg={progressBg}
-                                                    stringKey={stringKey}
-                                                    result={result}
+                                                    games = {games}
+                                                    openingGameCount={openingGameCount}
+                                                    profile={result}
                                                     side={side}
                                                     scorePercent={scorePercent}
                                                     setGamesPopUp={setGamesPopUp}
                                                     isPopup={false}
                                                     rowGridConst={rowGridForOpenings}
                                                     index={i + 1}
+                                                    isPending = {isPending}
+                                                    startTransition = {startTransition}
+                                                    username = {result.username}
+                                                    setGames = {setGames}
+                                                    setStatus = {setStatus}
                                                 />
                                             )
                                         }

@@ -1,18 +1,19 @@
+import { GamesAPIResponse } from "@/api/lib/types";
 import { AnalysisReport } from "@/src/lib/services/types";
 import { AnimatePresence, motion, easeInOut } from "framer-motion";
 import { ChevronRight } from "lucide-react";
-import { GamesPopup } from "./MainHistoryPage";
+import { GamesPopUp } from "./MainHistoryPage";
 
 type GameSideBarProps = {
-    gamesPopUp: GamesPopup | null;
-    result: AnalysisReport | null;
-    setGamesPopUp: (p: GamesPopup | null) => void;
+    gamesPopUp: GamesPopUp | null;
+    games: GamesAPIResponse | null;
+    setGamesPopUp: (p: GamesPopUp | null) => void;
     side: string
 }
-export default function GameSideBar({gamesPopUp, result, setGamesPopUp, side} : GameSideBarProps) {
+export default function GameSideBar({ gamesPopUp, setGamesPopUp, side, games }: GameSideBarProps) {
     return (
         <AnimatePresence>
-            {gamesPopUp && result && (
+            {gamesPopUp && games && (
                 <motion.div
                     initial={{ opacity: 0.3, x: 50 }}
                     animate={{ opacity: 1, x: 0 }}
@@ -26,18 +27,18 @@ export default function GameSideBar({gamesPopUp, result, setGamesPopUp, side} : 
                         className="flex flex-col z-50 w-1/2 min-h-screen max-h-screen bg-(--bg-secondary) shadow-black shadow-xs border border-(--accent-muted) overscroll-contain rounded-lg">
                         <div className="flex flex-col border-b border-(--accent-muted) gap-1 p-5 items-start justify-center bg-[radial-gradient(circle_at_-55%_-25%,var(--accent-muted),transparent_72%)]">
                             <p className="text-2xl font-semibold">
-                                {gamesPopUp.opening.openingName}
+                                {gamesPopUp.opening_name}
                             </p>
 
                             <div className="flex flex-row gap-1 items-center justify-center text-sm font-semibold">
                                 <span className="text-(--success)">
-                                    {side === "white" ? gamesPopUp.opening.white.whiteWins : gamesPopUp.opening.black.blackWins}W
+                                    {gamesPopUp.wins}W
                                 </span>
                                 <span>
-                                    {side === "white" ? gamesPopUp.opening.white.whiteDraws : gamesPopUp.opening.black.blackDraws}D
+                                    {gamesPopUp.draws}D
                                 </span>
                                 <span className="text-(--danger)">
-                                    {side === "white" ? gamesPopUp.opening.white.whiteLosses : gamesPopUp.opening.black.blackLosses}L
+                                    {gamesPopUp.losses}L
                                 </span>
                                 <span className="">
                                     as {side}
@@ -45,25 +46,18 @@ export default function GameSideBar({gamesPopUp, result, setGamesPopUp, side} : 
                             </div>
                         </div>
                         <div className="flex flex-col gap-1 overflow-y-auto rounded-md">
-                            {gamesPopUp.gameIds.map((id) => {
-                                const game = gamesPopUp.games[id];
-                                if (!game) {
-                                    return;
-                                }
-                                if (game.userColor !== side) {
-                                    return;
-                                }
+                            {games.games.map((data) => {
                                 const months = ["January", "Febuary", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-                                const date = new Date(game.date * 1000);
+                                const date = new Date(data.played_at * 1000);
                                 const gameDate = months[date.getMonth()] + " " + String(date.getDate());
-                                const color = ColorSelector(game.result);
-                                const timeClass = game.timeClass[0].toUpperCase() + game.timeClass.slice(1);
+                                const color = ColorSelector(data.result);
+                                const timeClass = data.time_class[0].toUpperCase() + data.time_class.slice(1);
                                 let increment = "";
                                 let timeControlFixed = ""
-                                let timeControl = game.timeControl;
-                                if (game.timeControl.includes("+")) {
-                                    const temp = game.timeControl
-                                    const index = game.timeControl.indexOf("+");
+                                let timeControl = data.time_control;
+                                if (data.time_control.includes("+")) {
+                                    const temp = data.time_control
+                                    const index = data.time_control.indexOf("+");
                                     increment = temp.slice(index + 1);
                                     timeControlFixed = temp.slice(0, index)
                                 }
@@ -83,20 +77,22 @@ export default function GameSideBar({gamesPopUp, result, setGamesPopUp, side} : 
                                         timeControl = String(Number(timeControl) / 60) + "m";
                                     }
                                 }
+                                const result = data.result === "black_won" && side === "black" ? "W" : data.result === "draw" ? "D" : "L";
+                                const opponent_name = side === "black" ? data.white_username : data.black_username;
                                 return (
                                     <div
-                                        key={id}
+                                        key={data.id}
                                         className={`flex flex-row items-center justify-between py-2 px-4  hover:cursor-pointer hover:bg-(--bg-tertiary) duration-200`}>
                                         <div className="flex flex-row items-center gap-3">
-                                            <span className={`${color} font-bold text-sm w-7 h-7 shrink-0 flex items-center justify-center rounded-md ${game.result === "win" ? "text-(--success) bg-(--success)/20" : game.result === "loss" ? "text-(--danger) bg-(--danger)/20" : "text-(--accent-muted) bg-(--accent-muted)"}`}>
-                                                {game.result === "win" ? "W" : game.result === "draw" ? "D" : "L"}
+                                            <span className={`${color} font-bold text-sm w-7 h-7 shrink-0 flex items-center justify-center rounded-md ${result === "W" ? "text-(--success) bg-(--success)/20" : result === "L" ? "text-(--danger) bg-(--danger)/20" : "text-(--accent-muted) bg-(--accent-muted)"}`}>
+                                                {result}
                                             </span>
                                             <div className="flex flex-col gap-0.5 items-start justify-center">
                                                 <p className="font-semibold">
-                                                    {game.opponentUsername}
+                                                    {opponent_name}
                                                 </p>
                                                 <p className="text-sm text-(--text-secondary)">
-                                                    {game.openingName}{game.openingVariation && ": "} {game.openingVariation}
+                                                    {data.opening}{data.opening_variation && ": "} {data.opening_variation}
                                                 </p>
                                             </div>
                                         </div>

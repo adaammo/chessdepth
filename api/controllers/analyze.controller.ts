@@ -3,7 +3,7 @@ import { AnalyzeGame } from "../lib/types";
 import { chess_queue } from "../lib/queue";
 import crypto from "crypto"
 export async function analyzeController(req: Request, res: Response, next: NextFunction) {
-    console.log(`${req.method} ${req.url} ${res.statusCode}`);
+    console.log(`${req.method} ${req.url} ${res.statusCode}`)
     try {
         const body = req.body as AnalyzeGame
         if (!body?.username || typeof body.username !== "string") {

@@ -1,5 +1,7 @@
 import { Response, Request, NextFunction } from "express"
 import { chess_queue } from "../lib/queue"
+import { GameData } from "../lib/types";
+import { getChessProfile } from "../database/chess-profiles";
 
 export async function getJobId(req: Request<{jobId: string}>, res: Response, next: NextFunction){
     console.log(`${req.method} ${req.url} ${res.statusCode}`);
@@ -31,12 +33,42 @@ export async function getJobId(req: Request<{jobId: string}>, res: Response, nex
     }
 }
 // usually limit will  be like 10-15 for this
-export async function getGamesFromJob(req: Request<{offset: number, limit: number}>, res: Response, next: NextFunction){
+export async function getGamesFromJob(req: Request<{opening: string | null, offset: number, limit: number, jobId: string}>, res: Response, next: NextFunction){
     console.log(`${req.method} ${req.url} ${res.statusCode}`);
     try{
-        
+        const job = await chess_queue.getJob(req.params.jobId);
+        const games = Object.values(job?.returnvalue.games ?? []);
+
+        if(!games){
+            res.status(500).json({
+                error: "User information was not able to be found."
+            })
+        }
+        if(req.params.opening){
+            games.filter((f) => f.openingName === req.params.opening);
+        }
+        const payload: GameData[] = [];
+        for(let i = req.params.offset; i < games.length && i < req.params.limit; i++){
+            payload.push(games[i]);
+        }
+        return payload;
     }
-    catch{
-        
+    catch(error){
+        throw error;
+    }
+}
+export async function profileDatabaseRead(req: Request<{username: string}>, res: Response, next: NextFunction){
+    console.log(`${req.method} ${req.url} ${res.statusCode}`);
+    try{
+        const data = await getChessProfile(req.params.username);
+        if(data.status === "failed"){
+            return res.status(401).json({
+                error: "No chess profile found within the database"
+            })
+        }
+        return res.status(200).json({status: "completed", profile: data.profile});
+    }
+    catch(error){
+        throw error;
     }
 }

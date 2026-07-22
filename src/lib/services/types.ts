@@ -52,8 +52,6 @@ export type OpeningData = {
     blackLosses: number,
     blackDraws: number
   }
-
-  gameIds: string[];
 };
 
 export type GameData = {

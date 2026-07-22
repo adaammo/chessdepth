@@ -1,31 +1,52 @@
 import { motion, color, easeIn, easeInOut } from "framer-motion";
 import { ChevronRight } from "lucide-react";
-import { GamesPopup } from "../MainHistoryPage";
 import { AnalysisReport, OpeningData } from "@/src/lib/services/types";
+import { GamesAPIResponse, ProfileDatabase } from "@/api/lib/types";
+import { startTransition, TransitionStartFunction } from "react";
+import { getOpeningGames } from "@/src/lib/services/api-functions";
+import { GamesPopUp } from "../MainHistoryPage";
 
 type CardPreview = {
     data: OpeningData,
-    games: number,
+    games: GamesAPIResponse | null,
+    openingGameCount: number
     scorePercent: number,
-    progressBg: string,
     side: "white" | "black";
-    setGamesPopUp: (p: GamesPopup) => void,
-    stringKey: string[],
-    result: AnalysisReport,
+    setGamesPopUp: (p: GamesPopUp) => void,
+    profile: ProfileDatabase,
     isPopup: boolean,
     rowGridConst: string;
     index: number;
+    isPending: boolean;
+    startTransition: TransitionStartFunction
+    username: string
+    setGames: (p: GamesAPIResponse | null) => void
+    setStatus: (p: "completed" | "processing" | "queued" | "not_found" | "failed" | null) => void
 }
-export default function CardPreview({ data, games, scorePercent, progressBg, side, setGamesPopUp, stringKey, result, isPopup, rowGridConst, index }: CardPreview) {
+export default function CardPreview({ data, openingGameCount, games, scorePercent, side, setGamesPopUp, profile, isPopup, rowGridConst, index, isPending, startTransition, username, setGames, setStatus }: CardPreview) {
     return (
         <motion.div
-            onClick={() => setGamesPopUp({
-                opening: data,
-                gameIds: stringKey,
-                games: result.games
-            })}
-            className={`${rowGridConst} hover:opacity-75 font-medium cursor-pointer duration-200 border-b border-(--accent-muted)
-${result?.bestOutcome?.openingName === data.openingName
+            onClick={async () => {
+                setGames(null);
+                startTransition(async () => {
+                    const opening = data.openingName;
+                    const response = await getOpeningGames("0", opening, side, username);
+                    if (response.status === "failed" || response.status === "not_found") {
+                        return setStatus(response.status);
+                    }
+                    if (response.status === "completed") {
+                        setGamesPopUp({
+                            opening_name: data.openingName,
+                            wins: side === "white" ? data.white.whiteWins : data.black.blackWins,
+                            losses: side === "white" ? data.white.whiteLosses : data.black.blackLosses,
+                            draws: side === "white" ? data.white.whiteDraws : data.black.blackDraws,
+                        });
+                        return setGames(response.profile);
+                    }
+                });
+            }}
+            className={`${rowGridConst} ${isPending && "cursor-not-allowed"} hover:opacity-75 font-medium cursor-pointer duration-200 border-b border-(--accent-muted)
+${profile?.best_outcome_opening === data.openingName
                     ? `
                 bg-linear-to-r
                 from-(--accent-muted)
@@ -45,7 +66,7 @@ ${result?.bestOutcome?.openingName === data.openingName
                     {data.openingName}
                 </p>
                 <span className="text-sm text-(--text-muted)">
-                    {games} games played
+                    {openingGameCount} games played
                 </span>
 
             </div>

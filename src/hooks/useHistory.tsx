@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
-import { ReadJobStatus } from "../lib/services/analyze";
+import { chessProfile, ReadJobStatus } from "../lib/services/api-functions";
 import { AnalysisReport } from "../lib/services/types";
+import { ProfileDatabase } from "@/api/lib/types";
 
 export default function useHistory(slug: string, uuid: string) {
     const [status, setStatus] = useState<"completed" | "processing" | "queued" | "not_found" | "failed" | null>("queued");
-    const [result, setResult] = useState<AnalysisReport | null>(null);
+    const [result, setResult] = useState<ProfileDatabase | null>(null);
     const trueJobId = `analysis:${slug}:${uuid}`;
     useEffect(() => {
         let timeOutId: ReturnType<typeof setTimeout>;
@@ -12,7 +13,14 @@ export default function useHistory(slug: string, uuid: string) {
             const response = await ReadJobStatus(trueJobId);
             setStatus(response.status);
             if (response.status === "completed") {
-                setResult(response.result);
+                const data = await chessProfile(slug);
+                if (data.status === "failed" || data.status === "not_found") {
+                    return;
+                }
+                if (data.status === "completed") {
+                    setResult(data.profile);
+                    return;
+                }
                 return;
             }
             if (response.status === "not_found" || response.status === "failed") {
@@ -22,6 +30,6 @@ export default function useHistory(slug: string, uuid: string) {
         }
         checkStatus();
         return () => clearTimeout(timeOutId);
-    }, [trueJobId]);
-    return {status, result};
+    }, [slug, trueJobId]);
+    return { status, result, setStatus };
 }

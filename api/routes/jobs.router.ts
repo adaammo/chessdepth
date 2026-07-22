@@ -1,8 +1,10 @@
 import { Router } from "express";
-import { getJobId } from "../controllers/jobs.controller";
+import { getJobId, profileDatabaseRead } from "../controllers/jobs.controller";
+import { requrireApiKey } from "../middleware/api_key.middleware";
 
 const router = Router();
 
-router.get("/:jobId", getJobId)
+router.get("/:jobId", requrireApiKey,getJobId);
+router.get("/profile/:username", requrireApiKey, profileDatabaseRead);
 
 export const job_router = router;

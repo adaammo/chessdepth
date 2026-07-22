@@ -1,7 +1,7 @@
 "use client"
 import { AnimatePresence, motion } from "motion/react";
 import { useState, useTransition } from "react";
-import { PostChessUsername } from "@/src/lib/services/analyze";
+import { PostChessUsername } from "@/src/lib/services/api-functions";
 import SuccessToast from "../toasts/SuccessToast";
 import { useRouter } from "next/navigation";
 export default function HomePage() {

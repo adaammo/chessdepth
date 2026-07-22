@@ -39,16 +39,22 @@ export async function NormalizationOfGames(games: ChessGame[], username: string)
         const { family, variation } = ecoRegexHelper(openingKey)
         winRate += score;
         if (!gameStats.has(game.uuid)) {
-            const result = score === 1 ? "win" : score === 0.5 ? "draw" : "loss";
+            const result =
+            score === 0.5
+                ? "draw"
+                : (userColor === "white" && score === 1) ? "white_won"
+                    : "black_won";    
+
             const timeClass = game.time_class
             const timeControl = game.time_control;
             const chessComAccuracy = (userColor === "white" ? game.accuracies?.white : game.accuracies?.black)
             const date = game.start_time ? game.start_time : game.end_time;
-            const opponentUsername = isWhite ? game.black.username : game.white.username
             gameStats.set(game.uuid, {
+                id: game.uuid,
                 url: game.url,
                 pgn: game.pgn,
-                opponentUsername,
+                white_username: game.white.username,
+                black_username: game.black.username,
                 userColor,
                 result,
                 fen: game.fen,
@@ -81,7 +87,6 @@ export async function NormalizationOfGames(games: ChessGame[], username: string)
                     blackWins: 0,
                 },
 
-                gameIds: [],
                 openingName: family,
                 openingVariations: new Set<string>()
             });
@@ -121,7 +126,6 @@ export async function NormalizationOfGames(games: ChessGame[], username: string)
                 ((opening.black.blackScore / opening.black.blackGames) * 100).toFixed(2)
             );
         }
-        opening.gameIds.push(game.uuid);
     }
 
     const openings = [...openingStats.values()];
