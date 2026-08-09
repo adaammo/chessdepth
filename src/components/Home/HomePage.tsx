@@ -11,7 +11,7 @@ export default function HomePage() {
     const [text, setText] = useState<string>("");
     const router = useRouter();
     return (
-        <div className="relative flex min-h-screen min-w-screen flex-col items-center justify-center overflow-hidden px-6">
+        <div className="relative flex min-h-screen w-full max-w-screen flex-col items-center justify-center overflow-hidden px-6">
             <motion.div
                 animate={{ opacity: [0.12, 0.22, 0.12] }}
                 transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}

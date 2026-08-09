@@ -1,19 +1,11 @@
-import type { Metadata } from "next";
 import { Geist, } from "next/font/google";
-import "./globals.css";
-import SidebarMain from "../components/layout/SidebarMain";
+import "../globals.css";
+import SidebarMain from "@/src/components/layout/SidebarMain";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
-});
-export const metadata: Metadata = {
-  title: "ChessDepth",
-  description: "Free chess.com premium features such as game analysis and opening winrates.",
-  icons: {
-    icon: "/squares-chessdepth.svg"
-  }
-};
+})
 
 export default function RootLayout({
   children,
@@ -25,7 +17,8 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.className} h-full antialiased bg-(--bg-primary) text-(--text-primary) max-w-screen`}
     >
-      <body>
+      <body className="min-h-full grid grid-cols-[170px_1fr]">
+        <SidebarMain/>
         {children}
       </body>
     </html>

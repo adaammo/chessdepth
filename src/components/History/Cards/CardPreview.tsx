@@ -8,7 +8,8 @@ import { GamesPopUp } from "../MainHistoryPage";
 
 type CardPreview = {
     data: OpeningData,
-    games: GamesAPIResponse | null,
+    gamesCache: Map<string, GamesAPIResponse> | null,
+    games: GamesAPIResponse | null;
     openingGameCount: number
     scorePercent: number,
     side: "white" | "black";
@@ -20,32 +21,47 @@ type CardPreview = {
     isPending: boolean;
     startTransition: TransitionStartFunction
     username: string
+    setGamesCache: React.Dispatch<
+        React.SetStateAction<Map<string, GamesAPIResponse> | null>
+    >
     setGames: (p: GamesAPIResponse | null) => void
     setStatus: (p: "completed" | "processing" | "queued" | "not_found" | "failed" | null) => void
 }
-export default function CardPreview({ data, openingGameCount, games, scorePercent, side, setGamesPopUp, profile, isPopup, rowGridConst, index, isPending, startTransition, username, setGames, setStatus }: CardPreview) {
+export default function CardPreview({ data, openingGameCount, games, scorePercent, side, setGamesPopUp, profile, isPopup, rowGridConst, index, isPending, startTransition, username, setGames, setStatus, gamesCache, setGamesCache }: CardPreview) {
+    const rowGrid = "md:grid grid-cols-[38px_minmax(0,0.8fr)_minmax(140,0.8fr)_135px_25px] gap-x-4 items-center p-4"
     return (
         <motion.div
             onClick={async () => {
                 setGames(null);
+                setGamesPopUp({
+                    opening_name: data.openingName,
+                    wins: side === "white" ? data.white.whiteWins : data.black.blackWins,
+                    losses: side === "white" ? data.white.whiteLosses : data.black.blackLosses,
+                    draws: side === "white" ? data.white.whiteDraws : data.black.blackDraws,
+                });
+                const opening = data.openingName;
+                const key = `${username}:${opening}:${side}`;
+                const cached = gamesCache?.get(key);
+                if (cached) {
+                    setGames(cached);
+                    return;
+                }
                 startTransition(async () => {
-                    const opening = data.openingName;
                     const response = await getOpeningGames("0", opening, side, username);
                     if (response.status === "failed" || response.status === "not_found") {
                         return setStatus(response.status);
                     }
                     if (response.status === "completed") {
-                        setGamesPopUp({
-                            opening_name: data.openingName,
-                            wins: side === "white" ? data.white.whiteWins : data.black.blackWins,
-                            losses: side === "white" ? data.white.whiteLosses : data.black.blackLosses,
-                            draws: side === "white" ? data.white.whiteDraws : data.black.blackDraws,
+                        setGamesCache(previous => {
+                            const updated = new Map(previous ?? []);
+                            updated.set(key, response.profile);
+                            return updated;
                         });
-                        return setGames(response.profile);
+                        setGames(response.profile);
                     }
                 });
             }}
-            className={`${rowGridConst} ${isPending && "cursor-not-allowed"} hover:opacity-75 font-medium cursor-pointer duration-200 border-b border-(--accent-muted)
+            className={`flex flex-col items-start md:items-center ${rowGrid} ${isPending && "cursor-not-allowed"} hover:opacity-75 font-medium cursor-pointer duration-200 border-b border-(--accent-muted)
 ${profile?.best_outcome_opening === data.openingName
                     ? `
                 bg-linear-to-r
@@ -58,17 +74,24 @@ ${profile?.best_outcome_opening === data.openingName
               `
                     : "bg-(--bg-primary)"
                 }`}>
-            <span className="text-(--text-muted)">
+            <span className="hidden md:block text-(--text-muted)">
                 {index}
             </span>
-            <div className="flex flex-col items-start justify-center gap-1">
-                <p className="text-lg font-medium">
-                    {data.openingName}
+            <div className="flex md:flex-col items-center md:items-start w-full justify-between gap-2">
+                <div className="flex flex-col gap-0.5 items-start justify-center">
+                    <p className="text-lg font-medium text-wrap">
+                        {data.openingName}
+                    </p>
+                    <span className="text-sm mb-1 text-(--text-muted)">
+                        View {openingGameCount} games played
+                    </span>
+                </div>
+                <p className="md:hidden flex flex-col gap-0.5 items-start justify-center">
+                    {scorePercent}%
+                    <span className={`text-(--text-muted) text-sm`}>
+                        score across games
+                    </span>
                 </p>
-                <span className="text-sm text-(--text-muted)">
-                    {openingGameCount} games played
-                </span>
-
             </div>
             <div className="flex flex-col gap-1 items-start justify-center w-full">
                 <div className="w-full h-2 bg-(--accent-muted) border-(--border-subtle) rounded-full">
@@ -94,13 +117,13 @@ ${profile?.best_outcome_opening === data.openingName
                     </span>
                 </div>
             </div>
-            <p className="flex flex-col gap-0.5 items-start">
+            <p className="hidden md:flex flex-col gap-0.5 items-start">
                 {scorePercent}%
                 <span className={`text-(--text-muted) text-sm`}>
                     score across games
                 </span>
             </p>
-            <ChevronRight size={12} />
+            <ChevronRight size={12} className="hidden md:block" />
         </motion.div>
     )
 }

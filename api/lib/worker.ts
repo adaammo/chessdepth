@@ -47,7 +47,12 @@ const worker = new Worker<QueuePayload, WorkerReport>(QUEUE_NAME,
             played_at: games.date,
             opening_variation: games.openingVariation,
             time_class: games.timeClass,
-            time_control: games.timeControl
+            time_control: games.timeControl,
+            white_rating: games.white_rating,
+            black_rating: games.black_rating,
+            white_ending: games.white_ending,
+            black_ending: games.black_ending,
+            fen: games.fen
           }
         });
         await updateChessGames(gamesPayload);

@@ -24,6 +24,31 @@ export async function getGamesForOpening(req: Request<{ opening: string, side: s
         }
         return res.status(200).json({
             games: data as GamesDatabase[],
+            nextOffset: Number(offset) + 24,
+            hasMore: data.length === 25
+        });
+    }
+
+    catch (error) {
+        return next(error);
+    }
+}
+
+export async function getAllGames(req: Request<{ username: string, offset: string }>, res: Response, next: NextFunction) {
+    console.log(`${req.method} ${req.url} ${req.statusCode}`);
+    const {username, offset } = req.params;
+    try {
+        const supabase = getSupabaseClient();
+        const { data, error } = await supabase.from("games")
+            .select("*")
+            .or(`white_username.eq.${username.toLowerCase()},black_username.eq.${username.toLowerCase()}`)
+            .order("played_at", { ascending: false })
+            .range(Number(offset), Number(offset) + 24)
+        if (error) {
+            throw error;
+        }
+        return res.status(200).json({
+            games: data as GamesDatabase[],
             nextOffset: Number(offset + 24),
             hasMore: data.length === 25
         });

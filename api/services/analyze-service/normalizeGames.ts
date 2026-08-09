@@ -1,5 +1,5 @@
 import { PLAYER_URL, STATS_URL } from "../../lib/constants"
-import { ChessGame, GameData, OpeningData, OpeningStats, PlayerPayload } from "../../lib/types";
+import { ChessComPlayerResult, ChessGame, GameData, OpeningData, OpeningStats, PlayerPayload } from "../../lib/types";
 import { ecoRegexHelper, getGameOutcome, getOpeningKey, getOutcomeScore } from "./helpers";
 import { getPlayersProfile } from "./archives";
 
@@ -42,8 +42,9 @@ export async function NormalizationOfGames(games: ChessGame[], username: string)
             const result =
             score === 0.5
                 ? "draw"
-                : (userColor === "white" && score === 1) ? "white_won"
-                    : "black_won";    
+                : score === 1
+                    ? (userColor === "white" ? "white_won" : "black_won")
+                    : (userColor === "white" ? "black_won" : "white_won")
 
             const timeClass = game.time_class
             const timeControl = game.time_control;
@@ -64,7 +65,12 @@ export async function NormalizationOfGames(games: ChessGame[], username: string)
                 chessComAccuracy,
                 openingName: family,
                 openingVariation: variation,
-                ecoUrl: game.eco ?? "Opening Unknown"
+                ecoUrl: game.eco ?? "Opening Unknown",
+                white_rating: game.white.rating,
+                black_rating: game.black.rating,
+                white_ending: game.white.result as ChessComPlayerResult,
+                black_ending: game.black.result as ChessComPlayerResult,
+
             });
         }
         if (!openingStats.has(family)) {

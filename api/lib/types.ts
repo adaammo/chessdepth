@@ -144,6 +144,10 @@ export type GameData = {
   timeControl: string;
 
   chessComAccuracy?: number | undefined;
+  white_rating: number;
+  black_rating: number;
+  white_ending: ChessComPlayerResult;
+  black_ending: ChessComPlayerResult
 };
 
 
@@ -184,6 +188,11 @@ export type GamesDatabase = {
   opening_variation: string,
   time_class: string,
   time_control: string
+  white_rating: number;
+  black_rating: number;
+  white_ending: ChessComPlayerResult;
+  black_ending: ChessComPlayerResult;
+  fen: string;
 }
 export type ProfileDatabase = {
   username: string,
@@ -202,7 +211,12 @@ export type ProfileDatabase = {
   best_outcome_opening_count: number
 }
 export type GamesAPIResponse = {
-games: GamesDatabase[];
-nextOffset: number;
-hasMore: boolean
+  games: GamesDatabase[];
+  nextOffset: number;
+  hasMore: boolean
+}
+export type AllGamesAPIResponse = {
+  games: GamesDatabase[];
+  nextOffset: number;
+  hasMore: boolean;
 }
