@@ -3,24 +3,21 @@ import "../globals.css";
 import SidebarMain from "@/src/components/layout/SidebarMain";
 
 const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
+    variable: "--font-geist-sans",
+    subsets: ["latin"],
 })
 
 export default function RootLayout({
-  children,
+    children,
 }: Readonly<{
-  children: React.ReactNode;
+    children: React.ReactNode;
 }>) {
-  return (
-    <html
-      lang="en"
-      className={`${geistSans.className} h-full antialiased bg-(--bg-primary) text-(--text-primary) max-w-screen`}
-    >
-      <body className="min-h-full grid grid-cols-[170px_1fr]">
-        <SidebarMain/>
-        {children}
-      </body>
-    </html>
-  );
+    return (
+        <div className="grid min-h-screen w-full grid-cols-[170px_minmax(0,1fr)] bg-(--bg-primary)">
+            <SidebarMain /> 
+            <main className="min-w-0">
+                {children}
+            </main>
+        </div>
+    )
 }

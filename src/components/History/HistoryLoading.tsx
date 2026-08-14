@@ -29,7 +29,7 @@ export default function HistoryLoading({ username, status }: { username: string,
     }, [CHESS_FACTS]);
 
     return (
-        <div className="min-w-full min-h-screen flex items-center justify-center">
+        <div className="min-w-full min-h-screen flex items-center justify-center relative">
             <motion.div
                 animate={{ opacity: [0.12, 0.20, 0.12] }}
                 transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}

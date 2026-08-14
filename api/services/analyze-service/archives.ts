@@ -49,7 +49,6 @@ export async function getPlayersProfile(profile_url: string, stats_url: string) 
     try{
         const profile = await axios.get<PlayerProfile>(profile_url, {headers: CHESS_API_HEADERS});
         const stats = await axios.get<ChessComPlayerStats>(stats_url, {headers: CHESS_API_HEADERS});
-        
         return{
             ok: true,
             username: profile.data.username,

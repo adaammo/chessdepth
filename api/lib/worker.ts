@@ -34,6 +34,7 @@ const worker = new Worker<QueuePayload, WorkerReport>(QUEUE_NAME,
           win_rate: normalized.overallWinRate,
           best_outcome_opening: normalized.bestOutcome.openingName,
           best_outcome_opening_count: normalized.bestOutcome.count
+          
         };
         await updateChessProfile(profilePayload);
         const gamesPayload : GamesDatabase[] = Object.values(normalized.games).flat().map((games) => {

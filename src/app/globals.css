@@ -35,10 +35,8 @@
   --button-secondary-hover: #1a221e;
 }
 
-;
-
 body {
-  background: var(--background);
+  background: var(--bg-primary);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }

@@ -9,13 +9,13 @@ const geistSans = Geist({
 });
 export const metadata: Metadata = {
   title: "ChessDepth",
-  description: "Free chess.com premium features such as game analysis and opening winrates.",
+  description: "ChessDepth gives free chess.com premium features such as game analysis and opening winrates. Powered by Stockfish 18.",
   icons: {
     icon: "/squares-chessdepth.svg"
   }
 };
 
-export default function RootLayout({
+export default function MainLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
@@ -23,9 +23,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.className} h-full antialiased bg-(--bg-primary) text-(--text-primary) max-w-screen`}
+      className={`${geistSans.className} bg-(--bg-primary)`}
     >
-      <body>
+      <body className = "h-full antialiased bg-(--bg-primary) text-(--text-primary) max-w-screen">
         {children}
       </body>
     </html>
