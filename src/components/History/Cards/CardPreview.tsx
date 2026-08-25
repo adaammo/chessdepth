@@ -87,7 +87,7 @@ ${profile?.best_outcome_opening === data.openingName
                     </span>
                 </div>
                 <p className="md:hidden flex flex-col gap-0.5 items-start justify-center">
-                    {scorePercent}%
+                    {scorePercent.toFixed(2)}%
                     <span className={`text-(--text-muted) text-sm`}>
                         score across games
                     </span>

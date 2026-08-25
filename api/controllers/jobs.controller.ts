@@ -9,7 +9,7 @@ export async function getJobId(req: Request<{jobId: string}>, res: Response, nex
         const jobId = req.params.jobId
         const job = await chess_queue.getJob(jobId);
         if (!job) {
-            return res.status(404).json({ error: "No history found for this username." })
+            return res.status(404).json({ status: "failed", reason: "No history found for this username. Either this user doesn't exist, OR has not played a game within the last six months." })
         }
         const state = await job.getState()
         if (state === 'waiting' || state === 'delayed') {
@@ -21,11 +21,14 @@ export async function getJobId(req: Request<{jobId: string}>, res: Response, nex
         }
     
         if (state === 'completed') {
+            console.log(job.returnvalue)
             return res.status(200).json({ status: 'completed', result: job.returnvalue })
         }
     
         if (state === 'failed') {
-            return res.status(200).json({ status: 'failed' })
+            const reason = job.failedReason == "DATABSE_ERROR" ? "Something happened Internally. Please restart from the beginning." : 
+            job.failedReason === "NO_RECENT_GAMES" ? "This service relies on games that were played in the last 6 months. Please play some games and try using the service again later.": ""
+            return res.status(200).json({ status: 'failed', reason: "" })
         }
     
     } catch (err) {

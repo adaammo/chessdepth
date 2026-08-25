@@ -53,7 +53,7 @@ export async function PostChessUsername(username: string):
     }
 }
 export async function ReadJobStatus(jobId: string):
-    Promise<{ status: "completed", result: AnalysisReport } | { status: "processing" | "queued" } | { status: "failed" | "not_found" }> {
+    Promise<{ status: "completed", result: AnalysisReport } | { status: "processing" | "queued" } | { status: "failed" | "not_found", reason: string }> {
     try {
         const api_key = process.env.API_KEY ?? ""
         const url = `${process.env.NEXT_PUBLIC_API_URL}/jobs/${encodeURIComponent(jobId)}`
@@ -74,17 +74,21 @@ export async function ReadJobStatus(jobId: string):
         }
     }
     catch (error) {
-        if (isAxiosError<{ error: string }>(error)) {
+        if (isAxiosError<{ status: "failed" | "not_found", reason: string }>(error)) {
             const error_code = error.response?.status;
+            console.log(error.response?.data);
+            const msg = error.response?.data.reason ?? "We couldn't find anything to display. Please go back to the search page, and try again. Either this user does not exist, chess.com's API is down, or this search is out of date."
             if (error_code === 404) {
                 return {
-                    status: "not_found"
+                    status: "not_found",
+                    reason: msg
                 }
             }
         }
     }
     return {
-        status: "failed"
+        status: "failed",
+        reason: "We couldn't find anything to display. Please go back to the search page, and try again. Either this user does not exist, chess.com's API is down, or this search is out of date."
     }
 }
 export async function chessProfile(username: string): Promise<{ status: "completed", profile: ProfileDatabase } | { status: "failed" | "not_found" }> {

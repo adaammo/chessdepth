@@ -13,9 +13,10 @@ export default function RootLayout({
     children: React.ReactNode;
 }>) {
     return (
-        <div className="grid min-h-screen w-full grid-cols-[170px_minmax(0,1fr)] bg-(--bg-primary)">
-            <SidebarMain /> 
-            <main className="min-w-0">
+        <div className="grid min-h-screen w-full bg-(--bg-primary)">
+            {/** fix later */}
+            {/** <SidebarMain /> */}
+            <main className="w-screen">
                 {children}
             </main>
         </div>

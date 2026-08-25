@@ -6,6 +6,7 @@ import { ProfileDatabase } from "@/api/lib/types";
 export default function useHistory(slug: string, uuid: string) {
     const [status, setStatus] = useState<"completed" | "processing" | "queued" | "not_found" | "failed" | null>("queued");
     const [result, setResult] = useState<ProfileDatabase | null>(null);
+    const [errorMsg, setErrorMsg] = useState<string | null>();
     const trueJobId = `analysis:${slug}:${uuid}`;
     useEffect(() => {
         let timeOutId: ReturnType<typeof setTimeout>;
@@ -24,12 +25,13 @@ export default function useHistory(slug: string, uuid: string) {
                 return;
             }
             if (response.status === "not_found" || response.status === "failed") {
+                setErrorMsg(response.reason)
                 return;
             }
-            timeOutId = setTimeout(checkStatus, 2500);
+            timeOutId = setTimeout(checkStatus, 1200);
         }
         checkStatus();
         return () => clearTimeout(timeOutId);
     }, [slug, trueJobId]);
-    return { status, result, setStatus };
+    return { status, result, errorMsg, setStatus };
 }

@@ -23,7 +23,7 @@ export default function MainHistoryPage({ slug, uuid }: { slug: string, uuid: st
     const [filter, setFilter] = useState<"sorted_asc_games" | "sorted_desc_games" | "sort_asc_accuracy" | "sort_desc_accuracy">("sorted_desc_games");
     const [gamesPopUp, setGamesPopUp] = useState<GamesPopUp | null>(null);
     const rowGridForOpenings = "hidden md:grid grid-cols-[38px_minmax(0,0.8fr)_minmax(140,0.8fr)_135px_25px] gap-x-4 items-center p-4"
-    const { result, status, setStatus } = useHistory(slug, uuid);
+    const { result, status, errorMsg, setStatus } = useHistory(slug, uuid);
     const [dataView, setDataView] = useState<"games" | "openings">("openings");
     const [isPending, startTransition] = useTransition();
     const [gamesPending, startGamesTransition] = useTransition();
@@ -103,7 +103,7 @@ export default function MainHistoryPage({ slug, uuid }: { slug: string, uuid: st
                     setGames={setGames}
                 />
                 <div
-                    className={`flex min-h-screen w-full max-w-screen font-sans ${gamesPopUp && "opacity-20 duration-300"}`}>
+                    className={`flex min-h-screen w-full max-w-screen font-sans ${gamesPopUp && "opacity-20 duration-300"} `}>
                     <div className=" flex flex-col items-start  w-full gap-3 mx-10 mt-18.75">
                         <div className="grid w-full overflow-hidden rounded-md border border-(--border-subtle) bg-(--bg-secondary) shadow-md shadow-black/30 lg:grid-cols-[245px_minmax(0,1fr)]">
                             <div className="flex flex-col items-center justify-center border-b border-(--border-subtle) px-5 py-6 text-center lg:border-r lg:border-b-0">
@@ -276,9 +276,14 @@ export default function MainHistoryPage({ slug, uuid }: { slug: string, uuid: st
                                         </ul>
                                     </div>
                                 </div>
-                                <span className="text-(--text-muted) tracking-widest text-sm">
-                                    Opening classification in games as {side}
-                                </span>
+                                <p className="flex flex-row w-full justify-between text-(--text-muted) items-center tracking-widest text-sm">
+                                    <span className="">
+                                        Opening classification in games as {side}
+                                    </span>
+                                    <span className="text-sm    ">
+                                        Game history based off the last six months
+                                    </span>
+                                </p>
                                 <div className="flex flex-col w-full">
                                     <div className={`${rowGridForOpenings} bg-(--bg-secondary) rounded-t-lg  border border-(--accent-muted)`}>
                                         <span className="text-(--text-muted) text-sm">
@@ -362,7 +367,7 @@ export default function MainHistoryPage({ slug, uuid }: { slug: string, uuid: st
                                         Accuracy
                                     </p>
                                     <p className="">
-                                        
+
                                     </p>
                                 </div>
                                 {gamesPending ? (
@@ -398,7 +403,7 @@ export default function MainHistoryPage({ slug, uuid }: { slug: string, uuid: st
                                             return (
                                                 <div
                                                     key={`${games.id}-all-games`}
-                                                    onClick = {() => router.push(`/games/review/${games.id}`)}
+                                                    onClick={() => router.push(`/games/review/${games.id}`)}
                                                     className={`
                                                     ${allGamesGrid} min-w-0 py-2 w-full overflow-hidden
                                                     transition-colors ${bgColor} hover:bg-(--bg-tertiary)
@@ -504,7 +509,7 @@ export default function MainHistoryPage({ slug, uuid }: { slug: string, uuid: st
 
     if (status === "failed" || status === "not_found") {
         return (
-            <HistoryErrorPage />
+            <HistoryErrorPage errorMsg={errorMsg} />
         )
     }
     return null;
