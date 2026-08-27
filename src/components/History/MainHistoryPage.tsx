@@ -403,7 +403,7 @@ export default function MainHistoryPage({ slug, uuid }: { slug: string, uuid: st
                                             return (
                                                 <div
                                                     key={`${games.id}-all-games`}
-                                                    onClick={() => router.push(`/games/review/${games.id}`)}
+                                                    onClick={() => router.push(`/games/review/${games.id}?perspective=${result.username}&pfp_url=${result.profile_pic}&move=0`)}
                                                     className={`
                                                     ${allGamesGrid} min-w-0 py-2 w-full overflow-hidden
                                                     transition-colors ${bgColor} hover:bg-(--bg-tertiary)

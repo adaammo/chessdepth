@@ -13,7 +13,8 @@ export type AnalysisReport = {
     bestOutcome: OpeningStats
     totalGames: number
 }
-
+type ChessCoachId =| 'coach-david'| 'coach-mae'| 'coach-levy'| 'coach-magnus'| 'coach-hikaru'| 'coach-danny'| 'coach-anna'| 'coach-alexandra'| 'coach-andrea';
+const CHESS_COACH_IDS = new Set(['coach-david','coach-mae','coach-levy','coach-magnus','coach-hikaru','coach-danny','coach-anna','coach-alexandra','coach-andrea',]);
 
 export async function NormalizationOfGames(games: ChessGame[], username: string): Promise<AnalysisReport> {
     const openingStats = new Map<string, OpeningData>();
@@ -30,6 +31,11 @@ export async function NormalizationOfGames(games: ChessGame[], username: string)
     const profile: PlayerPayload = { username: profileQuery.username, avatar: profileQuery.avatar, stats: profileQuery.stats };
     let totalGames = 0;
     for (const game of games) {
+        // skip coaches, the api response dosnt give opening or time rating or any information for such games
+
+        if(CHESS_COACH_IDS.has(game.black.username.toLocaleLowerCase()) || CHESS_COACH_IDS.has(game.white.username.toLocaleLowerCase())){
+            continue;
+        }
         const isWhite = game.white.username.toLowerCase() === username.toLowerCase();
         const userColor = isWhite ? "white" : "black";
         const playerResult = isWhite ? game.white.result : game.black.result;

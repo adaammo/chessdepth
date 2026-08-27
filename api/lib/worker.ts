@@ -18,9 +18,9 @@ const worker = new Worker<QueuePayload, WorkerReport>(QUEUE_NAME,
       }
         const { username } = job.data;
         const response = await analyzeUser(username);
-        const normalized = await NormalizationOfGames(response, username);
+        const normalized = await NormalizationOfGames(response, username.toLocaleLowerCase());
         const profilePayload : ProfileDatabase = {
-          username: normalized.username,
+          username: normalized.username.toLocaleLowerCase(),
           profile_pic: normalized.profile.avatar,
           profile_url: normalized.profile.username,
           total_games: normalized.totalGames,

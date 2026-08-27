@@ -44,8 +44,7 @@ export async function updateChessProfile(payload: ProfileDatabase) {
             statsMap.set(incoming.openingName, incoming);
             continue;
         }
-
-        // WHITE
+        // mix old + new since openings is NOT A SEPERATE DATA TABLE
         existing.white.whiteGames += incoming.white.whiteGames;
         existing.white.whiteWins += incoming.white.whiteWins;
         existing.white.whiteLosses += incoming.white.whiteLosses;
@@ -61,7 +60,6 @@ export async function updateChessProfile(payload: ProfileDatabase) {
                 : Number(((existing.white.whiteScore /
                     existing.white.whiteGames) * 100).toFixed(2));
 
-        // BLACK
         existing.black.blackGames += incoming.black.blackGames;
         existing.black.blackWins += incoming.black.blackWins;
         existing.black.blackLosses += incoming.black.blackLosses;

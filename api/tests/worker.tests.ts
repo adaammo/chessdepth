@@ -4,7 +4,7 @@ import dotenv from "dotenv"
 dotenv.config({path: "dev.env"})
 const key = process.env.API_KEY
 async function testTiming(){
-    const usernames = [
+    const GMusernames = [
         "Hikaru",
         "MagnusCarlsen",
         "FabianoCaruana",
@@ -38,9 +38,12 @@ async function testTiming(){
         "GMVallejo",
         "GMLazaroBruzon",
       ];
+      const friends = [
+        "sspiidey", "sharquanisha", "nitrobeast705"
+      ];
       const times : string[] = [];
     const beginningTime = performance.now();
-    for (const name of usernames){
+    for (const name of friends){
         const start = performance.now();
         const req = await request(app)
         .post("/api/analyze")

@@ -8,8 +8,8 @@ export async function analyzeUser(username: string) {
         const now = new Date()
         console.log(user.exists)
         const start = (user.exists ? user.startFrom : new Date(now.getFullYear(), now.getMonth() - 5));
-        const archives = BuildArchiveUrls(username, start);
-        const games = await ArchivesDestructor(archives, username);
+        const archives = BuildArchiveUrls(username.toLocaleLowerCase(), start);
+        const games = await ArchivesDestructor(archives, username.toLocaleLowerCase());
         return games;
     }
     catch (error) {
