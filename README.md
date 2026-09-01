@@ -2,12 +2,13 @@
 
 ChessDepth is a free chess game analysis tool built around reviewing games played on Chess.com. 
 
-The main goal is pretty simple: enter a Chess.com username, retrieve the player's game history from the last six months, and allow any stored game to be reviewed move by move using Stockfish. This includes some normalization of the data such as displaying opening performance by side
+The main goal is pretty simple: enter a Chess.com username, retrieve the player's game history from the last six months, and allow any stored game to be reviewed move by move using Stockfish. This includes some normalization of the data, such as displaying opening performance by side
 
 The review UI includes the current evaluation, move history, move classifications, and a summary of how both players performed.
 
 ChessDepth will also track account-level statistics such as the number of blunders, strong moves, and other engine-derived classifications across analyzed games. (*In development*)
-
+## Why it exists
+Many free analysis tools exist, but the idea behind ChessDepth is to create more free services that Chess.com has locked. Such as opening win rate, average accuracy, most seen opening, highest win rate opening (based on a 10-game basis),  Stockfish 18 analysis,  and the account-level statistics, which are how many blunders, strong moves, and brilliants this user has had across their games. This will come with a game separation where the user can see the exact game they had this move as well.
 ## How It Works
 
 A user enters a Chess.com username and the backend first checks whether the account exists and whether it has game history within the supported six-month window.
