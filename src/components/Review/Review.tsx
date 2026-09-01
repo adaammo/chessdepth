@@ -6,35 +6,50 @@ import { Chessboard, ChessboardOptions, type PieceRenderObject } from "react-che
 import { Chess, Move } from "chess.js"
 import { ChevronLeft, ChevronRight, Play, StepBack, StepForward } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { createStockfishWorker } from "./stockfish";
+import { createStockfishWorker, EvaluateGame } from "./stockfish";
 const DEFAULT_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 export default function Review({ game, perspective, pfp_url, move }: { game: GamesDatabase, perspective: string, pfp_url: string, move: number }) {
+    const chess = new Chess();
+    chess.loadPgn(game.pgn);
+    const history = chess.history({ verbose: true })
+    const [currentMove, setCurrentMove] = useState<number>(move);
+    const fen = currentMove === 0 ? DEFAULT_FEN : history[currentMove - 1].after
+    const specificStyles = currentMove === 0 ? {} : {
+        [history[currentMove - 1].from]: { backgroundColor: "var(--accent-deep)", borderColor: "var(--accent-deep)" },
+        [history[currentMove - 1].to]: { backgroundColor: "#dccfb1", borderColor: "var(--accent-deep)" },
+        ...(currentMove === history.length
+            ? {
+                [
+                    game.result === "black_won"
+                        ? history.findLast(
+                            (f) => f.piece === "k" && f.color === "w"
+                        )?.to ?? ""
+                        : history.findLast(
+                            (f) => f.piece === "k" && f.color === "b"
+                        )?.to ?? ""
+                ]: {
+                    backgroundColor: "var(--danger)",
+                    borderColor: "var(--danger)",
+                },
+            }
+            : {}),
+    };
+    
     useEffect(() => {
         const worker = createStockfishWorker();
-        worker.postMessage("position startpos moves e2e4 e7e5 d2d4 d7d5")
-        worker.postMessage("go depth 20")
-        worker.onmessage = (event) => {
-            console.log(event.data);
-        };
+        EvaluateGame(worker, history)
         return () => {
             worker.terminate();
         };
     }, []);
-    const [currentMove, setCurrentMove] = useState<number>(move);
+
     const [side, setSide] = useState<"black" | "white">(game.black_username === perspective ? "black" : "white")
     const [sideSelect, setSideSelect] = useState<"analysis" | "summary">("analysis")
+    const [whiteAdvantage, setWhiteAdvantage] = useState<number>(0.00)
+    const [blackAdvantage, setBlackAdvantage] = useState<number>(0.00)
     const router = useRouter()
     const pathname = usePathname();
     const searchParams = useSearchParams();
-    const chess = new Chess();
-    chess.loadPgn(game.pgn);
-    const history = chess.history({ verbose: true })
-
-    const fen = currentMove === 0 ? DEFAULT_FEN : history[currentMove - 1].after
-    const lastMoveStyles = currentMove === 0 ? {} : {
-        [history[currentMove - 1].from]: { backgroundColor: "var(--accent-deep)", borderColor: "var(--accent-deep)" },
-        [history[currentMove - 1].to]: { backgroundColor: "#dccfb1", borderColor: "var(--accent-deep)" }
-    };
     const pieceTypes = [
         "wP", "wN", "wB", "wR", "wQ", "wK",
         "bP", "bN", "bB", "bR", "bQ", "bK",
@@ -89,7 +104,7 @@ export default function Review({ game, perspective, pfp_url, move }: { game: Gam
         pieces,
         position: fen,
         animationDurationInMs: 200,
-        squareStyles: lastMoveStyles
+        squareStyles: specificStyles,
     }
 
     return (
@@ -242,7 +257,7 @@ export default function Review({ game, perspective, pfp_url, move }: { game: Gam
 
                                     <div className="flex items-end gap-2 mt-1">
                                         <p className="text-3xl font-semibold">
-                                            +0.42
+                                            --
                                         </p>
                                         <span className="text-xs text-(--text-muted) pb-1">
                                             depth 18 / 22
@@ -250,7 +265,10 @@ export default function Review({ game, perspective, pfp_url, move }: { game: Gam
                                     </div>
                                 </div>
                             </div>
-                            <div className="w-full rounded-full h-3 bg-white/90" />
+                            <div className="w-full rounded-full h-3"
+                            style = {{
+                                backgroundColor: `linear-gradiant(to right, white ${whiteAdvantage}% black ${blackAdvantage}%`
+                            }} />
                         </div>
 
 
@@ -344,7 +362,7 @@ export default function Review({ game, perspective, pfp_url, move }: { game: Gam
                                     </div>
 
                                     <p className="text-3xl font-semibold">
-                                        84.1
+                                        --
                                     </p>
 
                                     <div className="w-full h-1.5 rounded-full bg-(--bg-tertiary) overflow-hidden">
@@ -365,7 +383,7 @@ export default function Review({ game, perspective, pfp_url, move }: { game: Gam
                                     </div>
 
                                     <p className="text-3xl font-semibold">
-                                        79.6
+                                        --
                                     </p>
 
                                     <div className="w-full h-1.5 rounded-full bg-(--bg-tertiary) overflow-hidden">

@@ -3,6 +3,12 @@ import { app } from "../src/app";
 import dotenv from "dotenv"
 dotenv.config({path: "dev.env"})
 const key = process.env.API_KEY
+/** Recent optimization: 
+ * Aug 26th 2026: API now runs based of an archive of 1 month(floor), to a max of 6months(roof) depending on whether or not the recently played game was in the 
+ * last game or not.
+ * Tests done on this day: Three friend usernames ran at 15-16-17 seconds each, and after optimization, we now are down to 2-3 seconds each
+ * since we only care about
+ */
 async function testTiming(){
     const GMusernames = [
         "Hikaru",
@@ -39,7 +45,7 @@ async function testTiming(){
         "GMLazaroBruzon",
       ];
       const friends = [
-        "sspiidey", "sharquanisha", "nitrobeast705"
+        "sspiidey", "sharquanisha", "nitrobeast705", "MagnusCarlsen"
       ];
       const times : string[] = [];
     const beginningTime = performance.now();

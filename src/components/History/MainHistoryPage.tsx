@@ -416,7 +416,21 @@ export default function MainHistoryPage({ slug, uuid }: { slug: string, uuid: st
                                                             rounded-sm border border-(--border-default)
                                                             bg-white text-[12px] text-black
                                                         ">
-                                                                &#9823;
+                                                                {games.white_username === result.username ? (
+                                                                    <Image
+                                                                        alt={`${result?.username ?? "Chess player"} profile`}
+                                                                        src={result?.profile_pic ?? "/default-pfp-dark.jpg"}
+                                                                        width={80}
+                                                                        height={80}
+                                                                        quality={100}
+                                                                        sizes = "800px"
+                                                                        loading = "lazy"
+                                                                        className=" rounded-md object-cover shadow-sm shadow-black"
+                                                                    />) : (
+                                                                    <span className="">
+                                                                        &#9823;
+                                                                    </span>
+                                                                )}
                                                             </span>
 
                                                             <p className="truncate font-semibold">
@@ -437,7 +451,21 @@ export default function MainHistoryPage({ slug, uuid }: { slug: string, uuid: st
                                                             rounded-sm border border-(--border-default)
                                                             bg-(--bg-secondary) text-[12px] text-white
                                                         ">
-                                                                &#9823;
+                                                                {games.black_username === result.username ? (
+                                                                    <Image
+                                                                        alt={`${result?.username ?? "Chess player"} profile`}
+                                                                        src={result?.profile_pic ?? "/default-pfp-dark.jpg"}
+                                                                        width={80}
+                                                                        height={80}
+                                                                        quality={100}
+                                                                        sizes = "800px"
+                                                                        loading = "lazy"
+                                                                        className=" rounded-md object-cover shadow-sm shadow-black"
+                                                                    />) : (
+                                                                    <span className="">
+                                                                        &#9823;
+                                                                    </span>
+                                                                )}
                                                             </span>
 
                                                             <p className="truncate font-semibold">

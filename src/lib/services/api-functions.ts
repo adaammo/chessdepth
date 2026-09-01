@@ -1,7 +1,8 @@
 "use server"
 import axios, { isAxiosError } from "axios"
-import { AnalysisReport, AnalyzeControllerResponse } from "./types";
+import { AnalysisReport, AnalyzeControllerResponse, OpeningExplorerMastersResponse } from "./types";
 import { GamesAPIResponse, ProfileDatabase } from "@/api/lib/types";
+
 export async function PostChessUsername(username: string):
     Promise<{ status: "processing" | "added", msg: string, username: string, uuid: string, statusCode: number } | { status: "completed", username: string, uuid: string, result: AnalysisReport } | { status: "failed", failedReason: string, statusCode: number }> {
     const api_key = process.env.API_KEY ?? ""
@@ -174,3 +175,29 @@ export async function getEveryGame(offset: string, username: string):
         status: "failed"
     }
 }
+{/** Commented out as it might work in the future */}
+// export async function GetBookMoves(fen: string, played_move: string) : Promise<{ok: true, book: boolean} | {ok: false, error: string}>{
+//     try{
+//         const response = await axios.get<OpeningExplorerMastersResponse>(
+//             `https://explorer.lichess.ovh/masters?fen=${encodeURIComponent(fen)}`,
+//             {
+//                 headers: {
+//                     Authorization: LICHESS_AUTH_HEADERS,
+//                 },
+//             }
+//         );
+//         const data = response.data.moves
+//         const bookMove = data.some((u) => played_move === u.uci)
+//         console.log(bookMove);
+//         return {ok: true, book: bookMove}
+//     }
+//     catch(error){
+//         console.log("error", error)
+//         if(isAxiosError( error)){
+//             const msg = "Lichess's masters api is currently down."
+//             const status = 503
+//             return {ok: false, error: msg}
+//         }
+//     }
+//     return {ok: false, error: "Server seemed to malfunction when trying to evaluate the game. Reloading the page."}
+// }

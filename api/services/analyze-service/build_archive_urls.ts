@@ -5,7 +5,6 @@ export function BuildArchiveUrls(username: string, start: Date): string[]{
     const end = new Date()
     const ans = []
     const current = start
-    console.log(current, end);
     while (current <= end){
         ans.push(`${CHESS_URL_ARCHIVES_PREFIX(username)}/${String(start.getFullYear())}/${String(start.getMonth() + 1).padStart(2, "0")}`)
         current.setMonth(current.getMonth() + 1);

@@ -6,7 +6,6 @@ export async function analyzeUser(username: string) {
     try {
         const user = await DoesThisUserExist(username.toLocaleLowerCase());
         const now = new Date()
-        console.log(user.exists)
         const start = (user.exists ? user.startFrom : new Date(now.getFullYear(), now.getMonth() - 5));
         const archives = BuildArchiveUrls(username.toLocaleLowerCase(), start);
         const games = await ArchivesDestructor(archives, username.toLocaleLowerCase());

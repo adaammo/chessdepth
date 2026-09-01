@@ -72,3 +72,52 @@ export type GameData = {
 
   chessComAccuracy?: number | undefined;
 };
+
+export type OpeningExplorerGameColor = "white" | "black";
+
+export interface OpeningExplorerGamePlayer {
+  name: string;
+  rating: number;
+}
+interface OpeningExplorerOpening {
+  eco: string;
+  name: string;
+}
+interface OpeningExplorerMastersGame {
+  black: OpeningExplorerGamePlayer;
+  id: string;
+  white: OpeningExplorerGamePlayer;
+  winner: OpeningExplorerGameColor | null;
+  year: number;
+  month: string;
+}
+
+interface OpeningExplorerMove {
+  averageRating: number;
+  black: number;
+  draws: number;
+  game: OpeningExplorerMastersGame | null;
+  opening: OpeningExplorerOpening | null;
+  san: string;
+  uci: string;
+  white: number;
+}
+
+interface OpeningExplorerTopGame {
+  black: OpeningExplorerGamePlayer;
+  id: string;
+  uci: string;
+  white: OpeningExplorerGamePlayer;
+  winner: OpeningExplorerGameColor | null;
+  year: number;
+  month: string;
+}
+
+export interface OpeningExplorerMastersResponse {
+  black: number;
+  draws: number;
+  moves: OpeningExplorerMove[];
+  opening: OpeningExplorerOpening | null;
+  topGames: OpeningExplorerTopGame[];
+  white: number;
+}
