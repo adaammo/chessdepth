@@ -1,23 +1,29 @@
-import { Chess, Move } from "chess.js";
-
+import {  Move } from "chess.js";
+import { SetStateAction } from "react";
+/**
+ * 
+ * @file The entire stockfish evaluation algorithm
+ * As of Oct 22, I, adam, was able to get the engine evlaution for a users accuracy to an error rate for about 0-10%, with most tests lying
+ * between 4%-10%
+ */
 export function createStockfishWorker() {
     const worker = new Worker(
-        "/stockfish/stockfish-18-single.js"
+        "/stockfish/stockfish-19-single.js"
     );
     worker.postMessage("uci");
-    worker.postMessage("setoption name MultiPV value 3");
+    worker.postMessage("setoption name MultiPV value 2");
     return worker;
 }
-const PIECE_VALUE = {
-    p: 100,
-    n: 300,
-    b: 300,
-    r: 500,
-    q: 900,
-    k: 0
-};
-type MoveJustifications = "exceptional" | "best" | "good" | "confusing" | "incorrect" | "throw" | null
-export async function EvaluateGame(worker: Worker, history: Move[]) {
+
+type MoveJustifications = "exceptional" | "best" | "precise" | "good" | "confusing" | "incorrect" | "throw" | null
+
+type EvaluateGameProps = {
+    worker: Worker,
+    history: Move[],
+    setLoadingAnim: React.Dispatch<SetStateAction<string>>,
+    onMoveChange: React.Dispatch<SetStateAction<{ fen: string, moveIndex: number} | null>>;
+}
+export async function EvaluateGame({ worker, history, setLoadingAnim, onMoveChange}: EvaluateGameProps) {
     const whiteAccuracies = []
     const blackAccuracies = [];
     let whiteInhumaneMoves = 0;
@@ -28,6 +34,10 @@ export async function EvaluateGame(worker: Worker, history: Move[]) {
 
     let whiteBestMoves = 0;
     let blackBestMoves = 0;
+
+    let whitePreciceMoves = 0;
+    let blackPreciceMoves = 0;
+
 
     let whiteGoodMoves = 0;
     let blackGoodMoves = 0;
@@ -49,11 +59,12 @@ export async function EvaluateGame(worker: Worker, history: Move[]) {
         worker,
         history[0].before
     );
-    for (const i of history) {
-        const afterAnalysis = await analyzePosition(worker, i.after);
+    for (const [index, move] of history.entries()) {
+        setLoadingAnim(move.after)
+        const afterAnalysis = await analyzePosition(worker, move.after);
         if (afterAnalysis.gameEnded) {
             const accuracy = 100;
-            if (i.color === "w") {
+            if (move.color === "w") {
                 whiteAccuracies.push(accuracy);
             }
             else {
@@ -69,15 +80,15 @@ export async function EvaluateGame(worker: Worker, history: Move[]) {
         if (moveAnalysis === "cp->cp") {
             const beforeCenti = normalizeEval(
                 beforeAnalysis.topMoves[0].score.value,
-                i.before
+                move.before
             );
             const afterCenti = normalizeEval(
                 afterAnalysis.topMoves[0].score.value,
-                i.after
+                move.after
             );
             let centipawnLoss: number;
 
-            if (i.color === "w") {
+            if (move.color === "w") {
                 centipawnLoss = Math.max(
                     0,
                     beforeCenti - afterCenti
@@ -91,76 +102,48 @@ export async function EvaluateGame(worker: Worker, history: Move[]) {
 
             const accuracy =
                 moveAccuracy(centipawnLoss);
-            const playedMove = `${i.from}${i.to}${i.promotion ?? ""}`;
+            const playedMove = `${move.from}${move.to}${move.promotion ?? ""}`;
             const playedBestMove =
                 playedMove === beforeAnalysis.bestMove;
-
+            // mini helper inside no need to seperate
+            function outcome(cp: number) {
+                if (cp >= 200) return "winning";
+                if (cp <= -200) return "losing";
+                return "equal";
+            }
+            
             const best = beforeAnalysis.topMoves[0];
             const second = beforeAnalysis.topMoves[1];
             let isExceptional = false;
-            if (!best || !second) {
-                const moveJustification =
-                    resolveMoveJustification(centipawnLoss);
-
-                switch (moveJustification) {
-                    case "best": {
-                        if (i.color === "w") {
-                            whiteBestMoves += 1;
-                        } else {
-                            blackBestMoves += 1;
-                        }
-                        break;
-                    }
-
-                    case "good": {
-                        if (i.color === "w") {
-                            whiteGoodMoves += 1;
-                        } else {
-                            blackGoodMoves += 1;
-                        }
-                        break;
-                    }
-
-                    case "confusing": {
-                        if (i.color === "w") {
-                            whiteConfusingMoves += 1;
-                        } else {
-                            blackConfusingMoves += 1;
-                        }
-                        break;
-                    }
-
-                    case "incorrect": {
-                        if (i.color === "w") {
-                            whiteIncorrectMoves += 1;
-                        } else {
-                            blackIncorrectMoves += 1;
-                        }
-                        break;
-                    }
-
-                    case "throw": {
-                        if (i.color === "w") {
-                            whiteThrowMoves += 1;
-                        } else {
-                            blackThrowMoves += 1;
-                        }
-                        break;
-                    }
-                }
+            
+            if (playedBestMove &&
+                best?.score.type === "cp" &&
+                second?.score.type === "cp") {
+                const gap = best.score.value - second.score.value;
+                
+                const changesOutcome = outcome(best.score.value) !== outcome(second.score.value);
+                
+                // This is to make sure a user isn't already in a completley dominant situation
+                const notAlreadyCompletelyWinning =
+                    best.score.value < 700;
+                
+                    // Now a exceptions = great (chess.com) is >= 2 1/2 pawns, isnt the same as the second score, and isnt dominant
+                isExceptional =
+                    gap >= 250 &&
+                    changesOutcome &&
+                    notAlreadyCompletelyWinning;
             }
             else {
-                if (playedBestMove && (best.score.type === "cp" || second.score.type === "cp")) {
+                if (playedBestMove && (best?.score.type === "cp" && second && second.score.type === "cp")) {
                     const gap =
                         best.score.value - second.score.value;
-
-                    if (gap >= 100) {
+                    if (gap >= 350) {
                         isExceptional = true;
                     }
                 }
             }
             if (isExceptional) {
-                if (i.color === "w") {
+                if (move.color === "w") {
                     whiteExceptionalMoves += 1
                 }
                 else {
@@ -169,11 +152,11 @@ export async function EvaluateGame(worker: Worker, history: Move[]) {
             }
             else {
                 const moveJustification =
-                    resolveMoveJustification(centipawnLoss);
+                    resolveMoveJustification(centipawnLoss, playedBestMove);
 
                 switch (moveJustification) {
                     case "best": {
-                        if (i.color === "w") {
+                        if (move.color === "w") {
                             whiteBestMoves += 1;
                         } else {
                             blackBestMoves += 1;
@@ -181,8 +164,17 @@ export async function EvaluateGame(worker: Worker, history: Move[]) {
                         break;
                     }
 
+                    case "precise": {
+                        if (move.color === "w") {
+                            whitePreciceMoves += 1;
+                        } else {
+                            blackPreciceMoves += 1;
+                        }
+                        break;
+                    }
+
                     case "good": {
-                        if (i.color === "w") {
+                        if (move.color === "w") {
                             whiteGoodMoves += 1;
                         } else {
                             blackGoodMoves += 1;
@@ -191,7 +183,7 @@ export async function EvaluateGame(worker: Worker, history: Move[]) {
                     }
 
                     case "confusing": {
-                        if (i.color === "w") {
+                        if (move.color === "w") {
                             whiteConfusingMoves += 1;
                         } else {
                             blackConfusingMoves += 1;
@@ -200,7 +192,7 @@ export async function EvaluateGame(worker: Worker, history: Move[]) {
                     }
 
                     case "incorrect": {
-                        if (i.color === "w") {
+                        if (move.color === "w") {
                             whiteIncorrectMoves += 1;
                         } else {
                             blackIncorrectMoves += 1;
@@ -209,7 +201,7 @@ export async function EvaluateGame(worker: Worker, history: Move[]) {
                     }
 
                     case "throw": {
-                        if (i.color === "w") {
+                        if (move.color === "w") {
                             whiteThrowMoves += 1;
                         } else {
                             blackThrowMoves += 1;
@@ -218,7 +210,7 @@ export async function EvaluateGame(worker: Worker, history: Move[]) {
                     }
                 }
             }
-            if (i.color === "w") {
+            if (move.color === "w") {
                 whiteAccuracies.push(accuracy);
             }
             else {
@@ -230,14 +222,14 @@ export async function EvaluateGame(worker: Worker, history: Move[]) {
                 const whoGotMate = afterScore.winner;
 
                 const accuracy =
-                    whoGotMate === i.color
+                    whoGotMate === move.color
                         ? 100
                         : 0;
                 // for ref, if the user moved and let mate occur, its a bludner, else if the user found a move that leads to mate its a exceptional move
                 // which = great in chess.com
-                if (i.color === whoGotMate) {
+                if (move.color === whoGotMate) {
                     // moveJustification = exceptional
-                    if (i.color === "w") {
+                    if (move.color === "w") {
                         whiteExceptionalMoves += 1
                     }
                     else {
@@ -246,14 +238,14 @@ export async function EvaluateGame(worker: Worker, history: Move[]) {
                 }
                 // moveJustification = throw
                 else {
-                    if (i.color === "w") {
+                    if (move.color === "w") {
                         whiteThrowMoves += 1
                     }
                     else {
                         blackThrowMoves += 1
                     }
                 }
-                if (i.color === "w") {
+                if (move.color === "w") {
                     whiteAccuracies.push(accuracy);
                 }
                 else {
@@ -263,66 +255,72 @@ export async function EvaluateGame(worker: Worker, history: Move[]) {
         }
 
         else if (moveAnalysis === "mate->cp") {
+            // THIS IS LOGICAL. A mate->cp only works if one side misses the mate. The idea is if they blundered so bad the game swaps it needs
+            // To know that.
             if (beforeScore.type === "mate" && afterScore.type === "cp") {
                 const whoHadMate = beforeScore.winner;
 
                 const afterCenti = normalizeEval(
                     afterScore.value,
-                    i.after
+                    move.after
                 );
-                const moverEval = i.color === "w" ? afterCenti : -afterCenti;
-                const moveJustification: MoveJustifications = resolveMoveJustification(moverEval);
-                switch (moveJustification) {
-                    case "best": {
-                        if (i.color === "w") {
-                            whiteBestMoves += 1;
-                        } else {
-                            blackBestMoves += 1;
-                        }
-                        break;
-                    }
+                const moverEval =
+                    move.color === "w"
+                        ? afterCenti
+                        : -afterCenti;
+                if (whoHadMate === move.color) {
+                    // The mover lost their own mating sequence.
+                    const moveJustification =
+                        resolveLostMateJustification(moverEval);
 
-                    case "good": {
-                        if (i.color === "w") {
-                            whiteGoodMoves += 1;
-                        } else {
-                            blackGoodMoves += 1;
+                    // Record classification and accuracy here.
+                    switch (moveJustification) {
+                        case "best": {
+                            if (move.color === "w") {
+                                whiteBestMoves += 1;
+                            } else {
+                                blackBestMoves += 1;
+                            }
+                            break;
                         }
-                        break;
-                    }
+                        case "good": {
+                            if (move.color === "w") {
+                                whiteGoodMoves += 1;
+                            } else {
+                                blackGoodMoves += 1;
+                            }
+                            break;
+                        }
 
-                    case "confusing": {
-                        if (i.color === "w") {
-                            whiteConfusingMoves += 1;
-                        } else {
-                            blackConfusingMoves += 1;
+                        case "confusing": {
+                            if (move.color === "w") {
+                                whiteConfusingMoves += 1;
+                            } else {
+                                blackConfusingMoves += 1;
+                            }
+                            break;
                         }
-                        break;
-                    }
 
-                    case "incorrect": {
-                        if (i.color === "w") {
-                            whiteIncorrectMoves += 1;
-                        } else {
-                            blackIncorrectMoves += 1;
+                        case "incorrect": {
+                            if (move.color === "w") {
+                                whiteIncorrectMoves += 1;
+                            } else {
+                                blackIncorrectMoves += 1;
+                            }
+                            break;
                         }
-                        break;
-                    }
 
-                    case "throw": {
-                        if (i.color === "w") {
-                            whiteThrowMoves += 1;
-                        } else {
-                            blackThrowMoves += 1;
+                        case "throw": {
+                            if (move.color === "w") {
+                                whiteThrowMoves += 1;
+                            } else {
+                                blackThrowMoves += 1;
+                            }
+                            break;
                         }
-                        break;
                     }
-                }
-                // you need to just simplify it to how is the current position and who is in the advantgae now
-                // if the cenipawn difference is catastrophic, then 0% for this, else the other comparisons
-                if (whoHadMate === i.color) {
                     const accuracy = lostMateAccuracy(moverEval);
-                    if (i.color === "w") {
+                    if (move.color === "w") {
                         whiteAccuracies.push(accuracy);
                     }
                     else {
@@ -339,13 +337,12 @@ export async function EvaluateGame(worker: Worker, history: Move[]) {
             ) {
                 const beforeWinner = beforeScore.winner;
                 const afterWinner = afterScore.winner;
-                console.log(beforeWinner, afterWinner, beforeScore, afterScore);
                 let accuracy: number;
 
                 if (beforeWinner !== afterWinner) {
                     accuracy = 0;
                 }
-                else if (beforeWinner === i.color) {
+                else if (beforeWinner === move.color) {
                     accuracy = 100;
                 }
                 else {
@@ -353,21 +350,25 @@ export async function EvaluateGame(worker: Worker, history: Move[]) {
                     const afterMate = Math.abs(afterScore.value);
                     accuracy = mateDefenseAccuracy(Math.max(0, beforeMate - afterMate))
                 }
-                if (i.color === "w") {
+                if (move.color === "w") {
                     whiteExceptionalMoves += 1
                 }
                 else {
                     blackExceptionalMoves += 1
                 }
-                if (i.color === "w" && beforeWinner == afterWinner) {
+                if (move.color === "w" && beforeWinner == afterWinner) {
                     whiteAccuracies.push(accuracy);
-                } else if (i.color === "b" && beforeWinner == afterWinner) {
+                } else if (move.color === "b" && beforeWinner == afterWinner) {
                     blackAccuracies.push(accuracy);
                 }
             }
         }
 
         beforeAnalysis = afterAnalysis;
+        onMoveChange({
+            fen: move.after,
+            moveIndex: index + 1,
+        });
     }
     const whiteAccuracy = gameAccuracy(whiteAccuracies)
     const blackAccuracy = gameAccuracy(blackAccuracies)
@@ -376,6 +377,7 @@ export async function EvaluateGame(worker: Worker, history: Move[]) {
         blackAccuracy,
         white: {
             exceptional: whiteExceptionalMoves,
+            precise: whitePreciceMoves,
             best: whiteBestMoves,
             good: whiteGoodMoves,
             confusing: whiteConfusingMoves,
@@ -384,6 +386,7 @@ export async function EvaluateGame(worker: Worker, history: Move[]) {
         },
         black: {
             exceptional: blackExceptionalMoves,
+            precise: blackPreciceMoves,
             best: blackBestMoves,
             good: blackGoodMoves,
             confusing: blackConfusingMoves,
@@ -468,7 +471,7 @@ function analyzePosition(worker: Worker, fen: string): Promise<PositionAnalysis>
         }
         worker.addEventListener("message", handler);
         worker.postMessage(`position fen ${fen}`);
-        worker.postMessage("go depth 12");
+        worker.postMessage("go depth 20 movetime 300");
 
     })
 }
@@ -528,38 +531,56 @@ function gameAccuracy(accuracies: number[]): number {
 
     const terribleMoves = accuracies.filter(a => a < 30).length;
 
-    const badMoves = accuracies.filter(a => a >= 30 && a < 60).length;
+    const badMoves = accuracies.filter(a => a >= 30 && a < 65).length;
 
     const penalty =
-        terribleMoves * 5 +
+        terribleMoves +
         badMoves * 2;
 
     return Number(Math.max(0, average - penalty).toFixed(2));
 }
 
-function resolveMoveJustification(
-    centipawnLoss: number
-):  | "best"| "good" | "confusing" | "incorrect"| "throw"| null
-{
-
-    if (centipawnLoss <= 10) {
-        return "best";
+function resolveLostMateJustification(
+    moverEval: number
+): MoveJustifications {
+    if (moverEval <= 0) {
+        return "throw";
     }
 
-    if (centipawnLoss <= 40) {
-        return "good";
+    if (moverEval <= 500) {
+        return "incorrect";
     }
 
-    // normal move, no summary badge
-    if (centipawnLoss <= 80) {
-        return null;
-    }
-
-    if (centipawnLoss <= 175) {
+    if (moverEval <= 900) {
         return "confusing";
     }
 
-    if (centipawnLoss <= 300) {
+    if (moverEval <= 1500) {
+        return null;
+    }
+
+    return "good";
+}
+function resolveMoveJustification(
+    centipawnLoss: number,
+    playedBestMove: boolean
+): | "best" | "precise" | "good" | "confusing" | "incorrect" | "throw" | null {
+    if (playedBestMove) {
+        return "best";
+    }
+    if (centipawnLoss <= 25) {
+        return "precise";
+    }
+
+    if (centipawnLoss <= 60) {
+        return "good";
+    }
+
+    if (centipawnLoss <= 140) {
+        return "confusing";
+    }
+
+    if (centipawnLoss <= 285) {
         return "incorrect";
     }
 

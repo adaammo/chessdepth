@@ -1,22 +1,52 @@
 "use client"
 import { GamesDatabase } from "@/api/lib/types";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Chessboard, ChessboardOptions, type PieceRenderObject } from "react-chessboard"
-import { Chess, Move } from "chess.js"
+import { Chess, type Move } from "chess.js"
 import { ChevronLeft, ChevronRight, Play, StepBack, StepForward } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { createStockfishWorker, EvaluateGame } from "./stockfish";
-const DEFAULT_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+import { CustomChessBoard } from "@/src/lib/chess-board-helpers";
+import { DEFAULT_FEN, pieceTypes } from "@/src/lib/constants";
+const FIRST_ANIMATION = true;
 export default function Review({ game, perspective, pfp_url, move }: { game: GamesDatabase, perspective: string, pfp_url: string, move: number }) {
-    const chess = new Chess();
-    chess.loadPgn(game.pgn);
-    const history = chess.history({ verbose: true })
+    const chessRef = useRef<Chess | null>(null);
+    const [loadingAnim, setLoadingAnim] = useState<string>(DEFAULT_FEN);
     const [currentMove, setCurrentMove] = useState<number>(move);
+    const [isAnalyzing, setIsAnalyzing] = useState<boolean>(FIRST_ANIMATION);
+    const [analysisFrame, setAnalysisFrame] = useState<{ fen: string, moveIndex: number } | null>(null)
+    console.log(loadingAnim, isAnalyzing)
+    const { history } = useMemo(() => {
+        if (!game.pgn) {
+            return {
+                history: [] as Move[],
+            };
+        }
+
+        const loadedGame = new Chess();
+        loadedGame.loadPgn(game.pgn);
+
+        const loadedHistory = loadedGame.history({
+            verbose: true,
+        });
+
+        return {
+            history: loadedHistory,
+        };
+    }, [game.pgn]);
     const fen = currentMove === 0 ? DEFAULT_FEN : history[currentMove - 1].after
-    const specificStyles = currentMove === 0 ? {} : {
-        [history[currentMove - 1].from]: { backgroundColor: "var(--accent-deep)", borderColor: "var(--accent-deep)" },
-        [history[currentMove - 1].to]: { backgroundColor: "#dccfb1", borderColor: "var(--accent-deep)" },
+
+    const displayedMoveIndex =
+        isAnalyzing && analysisFrame
+            ? analysisFrame.moveIndex
+            : currentMove;
+    
+    const displayedMove = history[displayedMoveIndex - 1];
+    
+    const specificStyles = !displayedMove ? {} : {
+        [displayedMove.from]: { backgroundColor: "var(--accent-deep)", borderColor: "var(--accent-deep)" },
+        [displayedMove.to]: { backgroundColor: "#dccfb1", borderColor: "var(--accent-deep)" },
         ...(currentMove === history.length
             ? {
                 [
@@ -34,14 +64,20 @@ export default function Review({ game, perspective, pfp_url, move }: { game: Gam
             }
             : {}),
     };
-    
     useEffect(() => {
-        const worker = createStockfishWorker();
-        EvaluateGame(worker, history)
+        const worker = createStockfishWorker()
+        const analyze = async () => {
+            await EvaluateGame({ worker, history, setLoadingAnim, onMoveChange: setAnalysisFrame})
+                .finally(() => {
+                    setLoadingAnim(DEFAULT_FEN)
+                    setIsAnalyzing(false);
+                })
+        }
+        void analyze();
         return () => {
             worker.terminate();
         };
-    }, []);
+    }, [history]);
 
     const [side, setSide] = useState<"black" | "white">(game.black_username === perspective ? "black" : "white")
     const [sideSelect, setSideSelect] = useState<"analysis" | "summary">("analysis")
@@ -50,10 +86,6 @@ export default function Review({ game, perspective, pfp_url, move }: { game: Gam
     const router = useRouter()
     const pathname = usePathname();
     const searchParams = useSearchParams();
-    const pieceTypes = [
-        "wP", "wN", "wB", "wR", "wQ", "wK",
-        "bP", "bN", "bB", "bR", "bQ", "bK",
-    ];
 
     const pieces = Object.fromEntries(pieceTypes.map((p) => [
         p,
@@ -69,44 +101,7 @@ export default function Review({ game, perspective, pfp_url, move }: { game: Gam
             />
         )
     ]))
-    const chessBoardOptions: ChessboardOptions = {
-        lightSquareNotationStyle: {
-            color: "white",
-            font: "status-bar",
-        },
-        darkSquareNotationStyle: {
-            color: "white",
-            font: "status-bar",
-        },
-        darkSquareStyle: {
-            background: `
-                linear-gradient(
-                    145deg,
-                    #3f3f42 0%,
-                    #2c2c2e 100%
-                )
-            `,
-        },
-
-        lightSquareStyle: {
-            background: "#bababd"
-        },
-        alphaNotationStyle: {
-            fontSize: "20px",
-        },
-        numericNotationStyle: {
-            fontSize: "20px",
-        },
-        boardStyle: {
-            borderRadius: "5px"
-        },
-        boardOrientation: side,
-        pieces,
-        position: fen,
-        animationDurationInMs: 200,
-        squareStyles: specificStyles,
-    }
-
+    const chessBoardOptions = CustomChessBoard(isAnalyzing ? loadingAnim : fen, side, specificStyles, pieces);
     return (
         <div className="flex flex-col lg:grid lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] items-start min-w-0 w-full py-3 px-10 mt-3 overflow-hidden gap-4">
             <div className="flex flex-col gap-3 items-center justify-center w-full min-h-[90dvh] min-w-0">
@@ -266,9 +261,9 @@ export default function Review({ game, perspective, pfp_url, move }: { game: Gam
                                 </div>
                             </div>
                             <div className="w-full rounded-full h-3"
-                            style = {{
-                                backgroundColor: `linear-gradiant(to right, white ${whiteAdvantage}% black ${blackAdvantage}%`
-                            }} />
+                                style={{
+                                    backgroundColor: `linear-gradiant(to right, white ${whiteAdvantage}% black ${blackAdvantage}%`
+                                }} />
                         </div>
 
 
@@ -536,14 +531,14 @@ export default function Review({ game, perspective, pfp_url, move }: { game: Gam
                 )}
                 <div className="grid grid-cols-4 gap-2 px-3">
                     <button
-                        disabled={currentMove === 0}
+                        disabled={currentMove === 0 || isAnalyzing}
                         onClick={() => setCurrentMove(0)}
                         className="flex items-center justify-center rounded-md bg-(--bg-primary) border border-(--border-subtle)">
                         <StepBack size={14} />
                     </button>
 
                     <button
-                        disabled={currentMove === 0}
+                        disabled={currentMove === 0 || isAnalyzing}
                         onClick={() => {
                             setCurrentMove((p) => p - 1)
                             const params = new URLSearchParams(searchParams.toString());
@@ -558,7 +553,7 @@ export default function Review({ game, perspective, pfp_url, move }: { game: Gam
 
 
                     <button
-                        disabled={currentMove === history.length}
+                        disabled={currentMove === history.length || isAnalyzing}
                         onClick={() => {
                             setCurrentMove((p) => p + 1)
                             const params = new URLSearchParams(searchParams.toString());
@@ -571,7 +566,7 @@ export default function Review({ game, perspective, pfp_url, move }: { game: Gam
                     </button>
 
                     <button
-                        disabled={currentMove === history.length}
+                        disabled={currentMove === history.length || isAnalyzing}
                         onClick={() => setCurrentMove(history.length)}
                         className="flex items-center justify-center rounded-md bg-(--bg-primary) border border-(--border-subtle)">
                         <StepForward size={14} />

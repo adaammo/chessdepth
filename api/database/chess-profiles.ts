@@ -15,6 +15,7 @@ export async function updateChessProfile(payload: ProfileDatabase) {
         .eq("username", username)
         .single();
     //
+    
     if (!profile) {
         const {error: insertError} = await admin
         .from("profiles")
