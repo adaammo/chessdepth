@@ -16,6 +16,7 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
+    "@supabase/supabase-js": "^2.118.0",
     "bullmq": "^5.79.2",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
