@@ -49,7 +49,7 @@ export async function getAllGames(req: Request<{ username: string, offset: strin
         }
         return res.status(200).json({
             games: data as GamesDatabase[],
-            nextOffset: Number(offset + 24),
+            nextOffset: Number(offset) + 24,
             hasMore: data.length === 25
         });
     }

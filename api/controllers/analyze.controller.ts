@@ -6,9 +6,10 @@ export async function analyzeController(req: Request, res: Response, next: NextF
     console.log(`${req.method} ${req.url} ${res.statusCode}`)
     try {
         const body = req.body as AnalyzeGame
-        if (!body?.username || typeof body.username !== "string") {
+        if (!body?.username || typeof body.username !== "string" || body.username.length < 3 
+            || body.username.length > 20 || body.username.includes(" ")) {
             return res.status(400).json({
-                error: "You must insert a username."
+                error: "You must insert a username/valid username."
             })
         }
         const username = body.username
@@ -18,7 +19,7 @@ export async function analyzeController(req: Request, res: Response, next: NextF
         if (existingJob) {
             const state = await existingJob.getState();
             if (state === "completed") {
-                return res.status(200).json({
+                return res.status(201).json({
                     status: "completed",
                     username,
                     uuid,
@@ -49,7 +50,7 @@ export async function analyzeController(req: Request, res: Response, next: NextF
             removeOnComplete: { age: 60 * 5 },
             removeOnFail: true
         });
-        return res.status(200).json({
+        return res.status(202).json({
             status: "added",
             message: "Username Found! Waiting to analyze",
             username: username,
