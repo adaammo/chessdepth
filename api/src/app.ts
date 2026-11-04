@@ -21,9 +21,8 @@ app.use((
   res: Response,
   next: NextFunction
 ) => {
-  console.error(error);
-
   return res.status(500).json({
+    
       error: "Something went wrong internally.",
   });
 });

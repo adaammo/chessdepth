@@ -28,7 +28,7 @@ export async function getJobId(req: Request<{jobId: string}>, res: Response, nex
         if (state === 'failed') {
             const reason = job.failedReason == "DATABSE_ERROR" ? "Something happened Internally. Please restart from the beginning." : 
             job.failedReason === "NO_RECENT_GAMES" ? "This service relies on games that were played in the last 6 months. Please play some games and try using the service again later.": ""
-            return res.status(200).json({ status: 'failed', reason: "" })
+            return res.status(200).json({ status: 'failed', reason})
         }
     
     } catch (err) {
