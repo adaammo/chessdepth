@@ -121,3 +121,15 @@ export interface OpeningExplorerMastersResponse {
   topGames: OpeningExplorerTopGame[];
   white: number;
 }
+
+export type MoveClassifications = "exceptional" | "best" | "precise" | "good" | "confusing" | "incorrect" | "throw"
+
+
+type ClassificationCounts = Record<MoveClassifications, number>;
+
+export type AnalyzedOutput = {
+    whiteAccuracy: number;
+    blackAccuracy: number;
+    whiteClassifications: ClassificationCounts;
+    blackClassifications: ClassificationCounts;
+};

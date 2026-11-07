@@ -1,9 +1,11 @@
-import {  Move } from "chess.js";
+import { AnalyzeGame } from "@/api/lib/types";
+import { AnalyzedOutput } from "@/src/lib/services/types";
+import { Move } from "chess.js";
 import { SetStateAction } from "react";
 /**
  * 
  * @file The entire stockfish evaluation algorithm
- * As of Oct 22, I, adam, was able to get the engine evlaution for a users accuracy to an error rate for about 0-10%, with most tests lying
+ * As of Oct 22, was able to get the engine evlaution for a users accuracy to an error rate for about 0-10%, with most tests lying
  * between 4%-10%
  */
 export function createStockfishWorker() {
@@ -15,19 +17,19 @@ export function createStockfishWorker() {
     return worker;
 }
 
-type MoveJustifications = "exceptional" | "best" | "precise" | "good" | "confusing" | "incorrect" | "throw" | null
 
 type EvaluateGameProps = {
     worker: Worker,
     history: Move[],
     setLoadingAnim: React.Dispatch<SetStateAction<string>>,
-    onMoveChange: React.Dispatch<SetStateAction<{ fen: string, moveIndex: number} | null>>;
+    onMoveChange: React.Dispatch<SetStateAction<{ fen: string, moveIndex: number } | null>>;
 }
-export async function EvaluateGame({ worker, history, setLoadingAnim, onMoveChange}: EvaluateGameProps) {
+export async function EvaluateGame({ worker, history, setLoadingAnim, onMoveChange }: EvaluateGameProps) : Promise<AnalyzedOutput> {
     const whiteAccuracies = []
     const blackAccuracies = [];
-    let whiteInhumaneMoves = 0;
-    let blackInhumaneMoves = 0;
+
+    // let whiteInhumaneMoves = 0;
+    // let blackInhumaneMoves = 0;
 
     let whiteExceptionalMoves = 0;
     let blackExceptionalMoves = 0;
@@ -111,23 +113,23 @@ export async function EvaluateGame({ worker, history, setLoadingAnim, onMoveChan
                 if (cp <= -200) return "losing";
                 return "equal";
             }
-            
+
             const best = beforeAnalysis.topMoves[0];
             const second = beforeAnalysis.topMoves[1];
             let isExceptional = false;
-            
+
             if (playedBestMove &&
                 best?.score.type === "cp" &&
                 second?.score.type === "cp") {
                 const gap = best.score.value - second.score.value;
-                
+
                 const changesOutcome = outcome(best.score.value) !== outcome(second.score.value);
-                
+
                 // This is to make sure a user isn't already in a completley dominant situation
                 const notAlreadyCompletelyWinning =
                     best.score.value < 700;
-                
-                    // Now a exceptions = great (chess.com) is >= 2 1/2 pawns, isnt the same as the second score, and isnt dominant
+
+                // Now a exceptions = great (chess.com) is >= 2 1/2 pawns, isnt the same as the second score, and isnt dominant
                 isExceptional =
                     gap >= 250 &&
                     changesOutcome &&
@@ -151,8 +153,13 @@ export async function EvaluateGame({ worker, history, setLoadingAnim, onMoveChan
                 }
             }
             else {
+                // bets possible eval score
+                const bestEval = beforeAnalysis.topMoves[0].score.value;
+                // what the user instead did
+                const playedEval = -afterAnalysis.topMoves[0].score.value;
+
                 const moveJustification =
-                    resolveMoveJustification(centipawnLoss, playedBestMove);
+                    resolveMoveJustification(bestEval, playedEval, playedBestMove);
 
                 switch (moveJustification) {
                     case "best": {
@@ -350,12 +357,7 @@ export async function EvaluateGame({ worker, history, setLoadingAnim, onMoveChan
                     const afterMate = Math.abs(afterScore.value);
                     accuracy = mateDefenseAccuracy(Math.max(0, beforeMate - afterMate))
                 }
-                if (move.color === "w") {
-                    whiteExceptionalMoves += 1
-                }
-                else {
-                    blackExceptionalMoves += 1
-                }
+
                 if (move.color === "w" && beforeWinner == afterWinner) {
                     whiteAccuracies.push(accuracy);
                 } else if (move.color === "b" && beforeWinner == afterWinner) {
@@ -372,10 +374,10 @@ export async function EvaluateGame({ worker, history, setLoadingAnim, onMoveChan
     }
     const whiteAccuracy = gameAccuracy(whiteAccuracies)
     const blackAccuracy = gameAccuracy(blackAccuracies)
-    console.log({
+    return {
         whiteAccuracy,
         blackAccuracy,
-        white: {
+        whiteClassifications: {
             exceptional: whiteExceptionalMoves,
             precise: whitePreciceMoves,
             best: whiteBestMoves,
@@ -384,7 +386,7 @@ export async function EvaluateGame({ worker, history, setLoadingAnim, onMoveChan
             incorrect: whiteIncorrectMoves,
             throw: whiteThrowMoves,
         },
-        black: {
+        blackClassifications: {
             exceptional: blackExceptionalMoves,
             precise: blackPreciceMoves,
             best: blackBestMoves,
@@ -393,7 +395,7 @@ export async function EvaluateGame({ worker, history, setLoadingAnim, onMoveChan
             incorrect: blackIncorrectMoves,
             throw: blackThrowMoves,
         }
-    });
+    }
 }
 // Meant to help know if w/b played a decent move between M6->M5 or M6->M1 ended the game instantly
 function mateDefenseAccuracy(distanceLost: number) {
@@ -471,7 +473,7 @@ function analyzePosition(worker: Worker, fen: string): Promise<PositionAnalysis>
         }
         worker.addEventListener("message", handler);
         worker.postMessage(`position fen ${fen}`);
-        worker.postMessage("go depth 20 movetime 300");
+        worker.postMessage("go depth 18 movetime 150");
 
     })
 }
@@ -561,28 +563,30 @@ function resolveLostMateJustification(
 
     return "good";
 }
+// This is very specific for the formula. This is mainly from surfing lichess open source contributions and this is the number fine tuned to fit
+// Win probability.
+function winProbability(cp: number): number {
+    return 1 / (1 + Math.exp(-0.00368208 * cp));
+}
+
+
 function resolveMoveJustification(
-    centipawnLoss: number,
+    bestEval: number,
+    playedEval: number,
     playedBestMove: boolean
-): | "best" | "precise" | "good" | "confusing" | "incorrect" | "throw" | null {
-    if (playedBestMove) {
-        return "best";
+): | "best" | "exceptional" | "precise" | "good" | "confusing" | "incorrect" | "throw" | null {
+    if (playedBestMove){
+        return "best"
     }
-    if (centipawnLoss <= 25) {
-        return "precise";
-    }
+    const before = winProbability(bestEval);
+    const after = winProbability(playedEval);
 
-    if (centipawnLoss <= 60) {
-        return "good";
-    }
+    const loss = Math.max(0, before - after);
 
-    if (centipawnLoss <= 140) {
-        return "confusing";
-    }
-
-    if (centipawnLoss <= 285) {
-        return "incorrect";
-    }
+    if (loss <= 0.01) return "precise";
+    if (loss <= 0.06) return "good";
+    if (loss <= 0.10) return "confusing";
+    if (loss <= 0.20) return "incorrect";
 
     return "throw";
 }

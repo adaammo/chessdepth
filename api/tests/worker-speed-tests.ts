@@ -1,7 +1,7 @@
 import request from "supertest";
-import { app } from "../src/app";
+import { app } from "../src/app"
 import dotenv from "dotenv"
-dotenv.config({path: "dev.env"})
+dotenv.config({path: "../dev.env"})
 const key = process.env.API_KEY
 /** Recent optimization: 
  * Aug 26th 2026: API now runs based of an archive of 1 month(floor), to a max of 6months(roof) depending on whether or not the recently played game was in the 
@@ -17,35 +17,9 @@ async function testTiming(){
         "DanielNaroditsky",
         "hansen",
         "KNVB",
-      
-        "vanea_03",
-        "thalaiva",
-        "mitrabhaa",
-        "HomayooonT",
-        "VitaRasik",
-        "shimastream",
-        "GMAshley",
-        "kaidanov",
-        "mickey632702",
-        "2bf41-0",
-        "FrancyGM",
-        "tigrangharamian",
-        "Angry_Twin",
-        "ilyajunior",
-        "underdogchss",
-        "BogdanDeac",
-        "IvanMorovic",
-        "Ucitelot",
-      
-        "baag",
-        "kuli4ik",
-        "DaggiGretarsson",
-        "Illia_Nyzhnyk",
-        "GMVallejo",
-        "GMLazaroBruzon",
       ];
       const friends = [
-        "sspiidey", "sharquanisha", "nitrobeast705", "MagnusCarlsen"
+        "sspiidey", "sharquanisha", "nitrobeast705", "MagnusCarlsen", "Hikaru", "FabianoCaruana", "GothamChess"
       ];
       const times : string[] = [];
     const beginningTime = performance.now();
@@ -85,3 +59,29 @@ async function testTiming(){
     console.log("Total: ", (endTime - beginningTime) / 1000)
 }
 testTiming()
+/**
+ * BEFORE ALL ADDED TO DB (minus sspidey and hikaru)
+ * [
+  'sspiidey: 2.59 seconds',
+  'sharquanisha: 6.60 seconds',
+  'nitrobeast705: 5.08 seconds',
+  'BROKE-ON:MagnusCarlsen: 1.03',
+  'MagnusCarlsen: 1.03 seconds',
+  'Hikaru: 2.04 seconds',
+  'BROKE-ON:FabianoCaruana: 1.02',
+  'FabianoCaruana: 1.02 seconds',
+  'GothamChess: 6.09 seconds'
+]
+  AFTER ALL ADDED TO DB
+  [
+  'sspiidey: 3.59 seconds',
+  'sharquanisha: 2.04 seconds',
+  'nitrobeast705: 1.53 seconds',
+  'BROKE-ON:MagnusCarlsen: 3.13',
+  'MagnusCarlsen: 3.13 seconds',
+  'Hikaru: 2.04 seconds',
+  'BROKE-ON:FabianoCaruana: 1.03',
+  'FabianoCaruana: 1.03 seconds',
+  'GothamChess: 2.04 seconds'
+]
+ */

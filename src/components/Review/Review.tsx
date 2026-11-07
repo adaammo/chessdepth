@@ -2,20 +2,22 @@
 import { GamesDatabase } from "@/api/lib/types";
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Chessboard, ChessboardOptions, type PieceRenderObject } from "react-chessboard"
+import { Chessboard } from "react-chessboard"
 import { Chess, type Move } from "chess.js"
-import { ChevronLeft, ChevronRight, Play, StepBack, StepForward } from "lucide-react";
+import { ChevronLeft, ChevronRight, StepBack, StepForward } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { createStockfishWorker, EvaluateGame } from "./stockfish";
 import { CustomChessBoard } from "@/src/lib/chess-board-helpers";
 import { DEFAULT_FEN, pieceTypes } from "@/src/lib/constants";
+import { AnalyzedOutput } from "@/src/lib/services/types";
 const FIRST_ANIMATION = true;
+
 export default function Review({ game, perspective, pfp_url, move }: { game: GamesDatabase, perspective: string, pfp_url: string, move: number }) {
-    const chessRef = useRef<Chess | null>(null);
     const [loadingAnim, setLoadingAnim] = useState<string>(DEFAULT_FEN);
     const [currentMove, setCurrentMove] = useState<number>(move);
     const [isAnalyzing, setIsAnalyzing] = useState<boolean>(FIRST_ANIMATION);
     const [analysisFrame, setAnalysisFrame] = useState<{ fen: string, moveIndex: number } | null>(null)
+    const [analyzed, setAnalyzed] = useState<AnalyzedOutput | null>(null)
     console.log(loadingAnim, isAnalyzing)
     const { history } = useMemo(() => {
         if (!game.pgn) {
@@ -41,9 +43,9 @@ export default function Review({ game, perspective, pfp_url, move }: { game: Gam
         isAnalyzing && analysisFrame
             ? analysisFrame.moveIndex
             : currentMove;
-    
+
     const displayedMove = history[displayedMoveIndex - 1];
-    
+
     const specificStyles = !displayedMove ? {} : {
         [displayedMove.from]: { backgroundColor: "var(--accent-deep)", borderColor: "var(--accent-deep)" },
         [displayedMove.to]: { backgroundColor: "#dccfb1", borderColor: "var(--accent-deep)" },
@@ -67,11 +69,12 @@ export default function Review({ game, perspective, pfp_url, move }: { game: Gam
     useEffect(() => {
         const worker = createStockfishWorker()
         const analyze = async () => {
-            await EvaluateGame({ worker, history, setLoadingAnim, onMoveChange: setAnalysisFrame})
+            const res = await EvaluateGame({ worker, history, setLoadingAnim, onMoveChange: setAnalysisFrame })
                 .finally(() => {
                     setLoadingAnim(DEFAULT_FEN)
                     setIsAnalyzing(false);
                 })
+            setAnalyzed(res);
         }
         void analyze();
         return () => {
@@ -80,9 +83,8 @@ export default function Review({ game, perspective, pfp_url, move }: { game: Gam
     }, [history]);
 
     const [side, setSide] = useState<"black" | "white">(game.black_username === perspective ? "black" : "white")
-    const [sideSelect, setSideSelect] = useState<"analysis" | "summary">("analysis")
-    const [whiteAdvantage, setWhiteAdvantage] = useState<number>(0.00)
-    const [blackAdvantage, setBlackAdvantage] = useState<number>(0.00)
+    const [sideSelect, setSideSelect] = useState<"analysis" | "summary">("summary")
+
     const router = useRouter()
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -229,16 +231,212 @@ export default function Review({ game, perspective, pfp_url, move }: { game: Gam
                 </div>
                 <div className="flex justify-between bg-(--bg-primary) items-center min-w-0 ">
                     <button
-                        onClick={() => setSideSelect("analysis")}
-                        className={`flex items-center) justify-center flex-1 font-medium px-5 mx-5 ${sideSelect === "analysis" && "bg-(--bg-tertiary) text-(--accent) cursor-pointer rounded-md shadow-xs transition-all duration-300 shadow-black"}`}>
-                        Analysis
-                    </button>
-                    <button
                         onClick={() => setSideSelect("summary")}
                         className={`flex items-center) justify-center flex-1 font-medium  mx-5 ${sideSelect === "summary" && "bg-(--bg-tertiary) rounded-md cursor-pointer text-(--accent) shadow-xs transition-all duration-300 shadow-black"}`}>
                         Summary
                     </button>
+                    <button
+                        onClick={() => setSideSelect("analysis")}
+                        className={`flex items-center) justify-center flex-1 font-medium px-5 mx-5 ${sideSelect === "analysis" && "bg-(--bg-tertiary) text-(--accent) cursor-pointer rounded-md shadow-xs transition-all duration-300 shadow-black"}`}>
+                        Analysis
+                    </button>
+
                 </div>
+                {sideSelect === "summary" && (
+                    <div className="flex flex-col min-h-0 overflow-y-auto px-5 py-4 gap-4">
+
+                        {/* ACCURACY */}
+                        <div className="flex flex-col gap-2">
+                            <p className="uppercase text-xs tracking-wide text-(--text-secondary) font-medium">
+                                Game Accuracy
+                            </p>
+
+                            <div className="grid grid-cols-2 gap-3">
+
+                                {/* WHITE */}
+                                <div className="flex flex-col gap-2 rounded-md border border-(--border-subtle) bg-(--bg-primary) p-4">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs text-(--text-muted)">
+                                            {game.white_username}
+                                        </span>
+
+                                        <span className="text-xs text-(--text-muted)">
+                                            White
+                                        </span>
+                                    </div>
+
+                                    <p className="text-3xl font-semibold">
+                                        {analyzed?.whiteAccuracy}
+                                    </p>
+
+                                    <div className="w-full h-1.5 rounded-full bg-(--bg-tertiary) overflow-hidden">
+                                        <div className="h-full w-[84.1%] bg-(--accent)" />
+                                    </div>
+                                </div>
+
+                                {/* BLACK */}
+                                <div className="flex flex-col gap-2 rounded-md border border-(--border-subtle) bg-(--bg-primary) p-4">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs text-(--text-muted)">
+                                            {game.black_username}
+                                        </span>
+
+                                        <span className="text-xs text-(--text-muted)">
+                                            Black
+                                        </span>
+                                    </div>
+
+                                    <p className="text-3xl font-semibold">
+                                        {analyzed?.blackAccuracy}
+                                    </p>
+
+                                    <div className="w-full h-1.5 rounded-full bg-(--bg-tertiary) overflow-hidden">
+                                        <div className="h-full w-[79.6%] bg-(--text-secondary)" />
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+
+
+                        {/* MOVE QUALITY */}
+                        <div className="flex flex-col gap-2">
+                            <div className="flex flex-col rounded-lg  bg-(--bg-secondary) border border-(--border-subtle) overflow-hidden">
+                                <div className="grid grid-cols-[1fr_1.4fr_1fr] items-center px-4 py-3 ">
+                                    <span className="text-[11px] font-medium text-(--text-secondary)">
+                                        {game.white_username}
+                                    </span>
+
+                                    <span className="text-[10px] uppercase tracking-[0.14em] text-center font-semibold text-(--text-muted)">
+                                        Move Quality
+                                    </span>
+
+                                    <span className="text-[11px] font-medium text-(--text-secondary) text-right">
+                                        {game.black_username}
+                                    </span>
+                                </div>
+
+
+                                <div className="grid grid-cols-[1fr_1.4fr_1fr] items-center px-4 py-2.5">
+                                    <span className="text-sm font-semibold">
+                                        --
+                                    </span>
+
+                                    <span className="text-[14px] tracking-[0.12em] text-center font-semibold text-(--brilliant)">
+                                        Inhumane
+                                    </span>
+
+                                    <span className="text-sm font-semibold text-right">
+                                        --
+                                    </span>
+                                </div>
+
+
+                                <div className="grid grid-cols-[1fr_1.4fr_1fr] items-center px-4 py-2.5">
+                                    <span className="text-sm font-semibold">
+                                        {analyzed?.whiteClassifications.exceptional}
+                                    </span>
+
+                                    <span className="text-[14px] tracking-[0.12em] text-center font-semibold text-(--accent-blue)">
+                                        Exceptional
+                                    </span>
+
+                                    <span className="text-sm font-semibold text-right">
+                                        {analyzed?.blackClassifications.exceptional}
+
+                                    </span>
+                                </div>
+
+
+                                <div className="grid grid-cols-[1fr_1.4fr_1fr] items-center px-4 py-2.5 ">
+                                    <span className="text-sm font-semibold">
+                                        {analyzed?.whiteClassifications.best}
+                                    </span>
+
+                                    <span className="text-[14px] tracking-[0.12em] text-center font-semibold text-(--success)">
+                                        Best
+                                    </span>
+
+                                    <span className="text-sm font-semibold text-right">
+                                        {analyzed?.blackClassifications.best}
+                                    </span>
+                                </div>
+
+
+                                <div className="grid grid-cols-[1fr_1.4fr_1fr] items-center px-4 py-2.5">
+                                    <span className="text-sm font-semibold">
+                                        {analyzed?.whiteClassifications.good}
+                                    </span>
+
+                                    <span className="text-[14px] tracking-[0.12em] text-center font-semibold text-(--text-secondary)">
+                                        Good
+                                    </span>
+
+                                    <span className="text-sm font-semibold text-right">
+                                        {analyzed?.blackClassifications.good}
+                                    </span>
+                                </div>
+
+                                <div className="grid grid-cols-[1fr_1.4fr_1fr] items-center px-4 py-2.5">
+                                    <span className="text-sm font-semibold">
+                                        --
+                                    </span>
+
+                                    <span className="text-[14px] tracking-[0.12em] text-center font-semibold text-(--accent)">
+                                        Theory
+                                    </span>
+
+                                    <span className="text-sm font-semibold text-right">
+                                        --
+                                    </span>
+                                </div>
+
+                                <div className="grid grid-cols-[1fr_1.4fr_1fr] items-center px-4 py-2.5">
+                                    <span className="text-sm font-semibold">
+                                        {analyzed?.whiteClassifications.confusing}
+                                    </span>
+
+                                    <span className="text-[14px] tracking-[0.12em] text-center font-semibold text-(--warning)">
+                                        Confusing
+                                    </span>
+
+                                    <span className="text-sm font-semibold text-right">
+                                        {analyzed?.blackClassifications.confusing}
+                                    </span>
+                                </div>
+
+                                <div className="grid grid-cols-[1fr_1.4fr_1fr] items-center px-4 py-2.5">
+                                    <span className="text-sm font-semibold">
+                                        {analyzed?.whiteClassifications.incorrect}
+                                    </span>
+
+                                    <span className="text-[14px] tracking-[0.12em] text-center font-semibold text-orange-500">
+                                        Incorrect
+                                    </span>
+
+                                    <span className="text-sm font-semibold text-right">
+                                        {analyzed?.blackClassifications.incorrect}
+                                    </span>
+                                </div>
+
+                                <div className="grid grid-cols-[1fr_1.4fr_1fr] items-center px-4 py-2.5">
+                                    <span className="text-sm font-semibold">
+                                        {analyzed?.whiteClassifications.throw}
+                                    </span>
+
+                                    <span className="text-[14px] tracking-[0.12em] text-center font-semibold text-(--danger)">
+                                        Throw
+                                    </span>
+
+                                    <span className="text-sm font-semibold text-right">
+                                        {analyzed?.blackClassifications.throw}
+                                    </span>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                )}
                 {sideSelect === "analysis" && (
                     <div className="relative flex flex-col min-h-0 overflow-hidden">
 
@@ -260,10 +458,7 @@ export default function Review({ game, perspective, pfp_url, move }: { game: Gam
                                     </div>
                                 </div>
                             </div>
-                            <div className="w-full rounded-full h-3"
-                                style={{
-                                    backgroundColor: `linear-gradiant(to right, white ${whiteAdvantage}% black ${blackAdvantage}%`
-                                }} />
+
                         </div>
 
 
@@ -333,202 +528,7 @@ export default function Review({ game, perspective, pfp_url, move }: { game: Gam
                         </div>
                     </div>
                 )}
-                {sideSelect === "summary" && (
-                    <div className="flex flex-col min-h-0 overflow-y-auto px-5 py-4 gap-4">
-
-                        {/* ACCURACY */}
-                        <div className="flex flex-col gap-2">
-                            <p className="uppercase text-xs tracking-wide text-(--text-secondary) font-medium">
-                                Game Accuracy
-                            </p>
-
-                            <div className="grid grid-cols-2 gap-3">
-
-                                {/* WHITE */}
-                                <div className="flex flex-col gap-2 rounded-md border border-(--border-subtle) bg-(--bg-primary) p-4">
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-xs text-(--text-muted)">
-                                            {game.white_username}
-                                        </span>
-
-                                        <span className="text-xs text-(--text-muted)">
-                                            White
-                                        </span>
-                                    </div>
-
-                                    <p className="text-3xl font-semibold">
-                                        --
-                                    </p>
-
-                                    <div className="w-full h-1.5 rounded-full bg-(--bg-tertiary) overflow-hidden">
-                                        <div className="h-full w-[84.1%] bg-(--accent)" />
-                                    </div>
-                                </div>
-
-                                {/* BLACK */}
-                                <div className="flex flex-col gap-2 rounded-md border border-(--border-subtle) bg-(--bg-primary) p-4">
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-xs text-(--text-muted)">
-                                            {game.black_username}
-                                        </span>
-
-                                        <span className="text-xs text-(--text-muted)">
-                                            Black
-                                        </span>
-                                    </div>
-
-                                    <p className="text-3xl font-semibold">
-                                        --
-                                    </p>
-
-                                    <div className="w-full h-1.5 rounded-full bg-(--bg-tertiary) overflow-hidden">
-                                        <div className="h-full w-[79.6%] bg-(--text-secondary)" />
-                                    </div>
-                                </div>
-
-                            </div>
-                        </div>
-
-
-                        {/* MOVE QUALITY */}
-                        <div className="flex flex-col gap-2">
-                            <div className="flex flex-col rounded-lg  bg-(--bg-secondary) border border-(--border-subtle) overflow-hidden">
-                                <div className="grid grid-cols-[1fr_1.4fr_1fr] items-center px-4 py-3 ">
-                                    <span className="text-[11px] font-medium text-(--text-secondary)">
-                                        {game.white_username}
-                                    </span>
-
-                                    <span className="text-[10px] uppercase tracking-[0.14em] text-center font-semibold text-(--text-muted)">
-                                        Move Quality
-                                    </span>
-
-                                    <span className="text-[11px] font-medium text-(--text-secondary) text-right">
-                                        {game.black_username}
-                                    </span>
-                                </div>
-
-
-                                <div className="grid grid-cols-[1fr_1.4fr_1fr] items-center px-4 py-2.5">
-                                    <span className="text-sm font-semibold">
-                                        1
-                                    </span>
-
-                                    <span className="text-[14px] tracking-[0.12em] text-center font-semibold text-(--brilliant)">
-                                        Inhumane
-                                    </span>
-
-                                    <span className="text-sm font-semibold text-right">
-                                        0
-                                    </span>
-                                </div>
-
-
-                                <div className="grid grid-cols-[1fr_1.4fr_1fr] items-center px-4 py-2.5">
-                                    <span className="text-sm font-semibold">
-                                        3
-                                    </span>
-
-                                    <span className="text-[14px] tracking-[0.12em] text-center font-semibold text-(--accent-blue)">
-                                        Exceptional
-                                    </span>
-
-                                    <span className="text-sm font-semibold text-right">
-                                        2
-                                    </span>
-                                </div>
-
-
-                                <div className="grid grid-cols-[1fr_1.4fr_1fr] items-center px-4 py-2.5 ">
-                                    <span className="text-sm font-semibold">
-                                        9
-                                    </span>
-
-                                    <span className="text-[14px] tracking-[0.12em] text-center font-semibold text-(--success)">
-                                        Best
-                                    </span>
-
-                                    <span className="text-sm font-semibold text-right">
-                                        8
-                                    </span>
-                                </div>
-
-
-                                <div className="grid grid-cols-[1fr_1.4fr_1fr] items-center px-4 py-2.5">
-                                    <span className="text-sm font-semibold">
-                                        11
-                                    </span>
-
-                                    <span className="text-[14px] tracking-[0.12em] text-center font-semibold text-(--text-secondary)">
-                                        Good
-                                    </span>
-
-                                    <span className="text-sm font-semibold text-right">
-                                        12
-                                    </span>
-                                </div>
-
-                                <div className="grid grid-cols-[1fr_1.4fr_1fr] items-center px-4 py-2.5">
-                                    <span className="text-sm font-semibold">
-                                        1
-                                    </span>
-
-                                    <span className="text-[14px] tracking-[0.12em] text-center font-semibold text-(--accent)">
-                                        Theory
-                                    </span>
-
-                                    <span className="text-sm font-semibold text-right">
-                                        2
-                                    </span>
-                                </div>
-
-                                <div className="grid grid-cols-[1fr_1.4fr_1fr] items-center px-4 py-2.5">
-                                    <span className="text-sm font-semibold">
-                                        2
-                                    </span>
-
-                                    <span className="text-[14px] tracking-[0.12em] text-center font-semibold text-(--warning)">
-                                        Confusing
-                                    </span>
-
-                                    <span className="text-sm font-semibold text-right">
-                                        3
-                                    </span>
-                                </div>
-
-
-                                <div className="grid grid-cols-[1fr_1.4fr_1fr] items-center px-4 py-2.5">
-                                    <span className="text-sm font-semibold">
-                                        1
-                                    </span>
-
-                                    <span className="text-[14px] tracking-[0.12em] text-center font-semibold text-orange-500">
-                                        Incorrect
-                                    </span>
-
-                                    <span className="text-sm font-semibold text-right">
-                                        2
-                                    </span>
-                                </div>
-
-
-                                <div className="grid grid-cols-[1fr_1.4fr_1fr] items-center px-4 py-2.5">
-                                    <span className="text-sm font-semibold">
-                                        0
-                                    </span>
-
-                                    <span className="text-[14px] tracking-[0.12em] text-center font-semibold text-(--danger)">
-                                        Throw
-                                    </span>
-
-                                    <span className="text-sm font-semibold text-right">
-                                        1
-                                    </span>
-                                </div>
-
-                            </div>
-                        </div>
-                    </div>
-                )}
+                
                 <div className="grid grid-cols-4 gap-2 px-3">
                     <button
                         disabled={currentMove === 0 || isAnalyzing}

@@ -27,7 +27,6 @@ export async function updateChessProfile(payload: ProfileDatabase) {
         return;
     }
     if (fetchError){
-        console.log("ejuhwygrhwukjrfhhjwerfb: fetch")
         throw fetchError
     }
     const oldStats: OpeningData[] =
@@ -83,7 +82,7 @@ export async function updateChessProfile(payload: ProfileDatabase) {
         .from("profiles")
         .update({
             profile_url: payload.profile_url,
-
+            profile_pic: payload.profile_pic,
             rapid_rating: payload.rapid_rating,
             blitz_rating: payload.blitz_rating,
             bullet_rating: payload.bullet_rating,
@@ -95,9 +94,7 @@ export async function updateChessProfile(payload: ProfileDatabase) {
             synced_at: payload.synced_at,
         })
         .eq("username", username);
-
     if (updateError) {
-        console.log("ejuhwygrhwukjrfhhjwerfb: fetch")
         throw updateError;
     }
     if (fetchError) {
