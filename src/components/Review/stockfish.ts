@@ -1,5 +1,5 @@
 import { AnalyzeGame } from "@/api/lib/types";
-import { AnalyzedOutput } from "@/src/lib/services/types";
+import { AnalyzedOutput, MoveClassifications } from "@/src/lib/services/types";
 import { Move } from "chess.js";
 import { SetStateAction } from "react";
 /**
@@ -24,7 +24,7 @@ type EvaluateGameProps = {
     setLoadingAnim: React.Dispatch<SetStateAction<string>>,
     onMoveChange: React.Dispatch<SetStateAction<{ fen: string, moveIndex: number } | null>>;
 }
-export async function EvaluateGame({ worker, history, setLoadingAnim, onMoveChange }: EvaluateGameProps) : Promise<AnalyzedOutput> {
+export async function EvaluateGame({ worker, history, setLoadingAnim, onMoveChange }: EvaluateGameProps): Promise<AnalyzedOutput | null> {
     const whiteAccuracies = []
     const blackAccuracies = [];
 
@@ -54,7 +54,7 @@ export async function EvaluateGame({ worker, history, setLoadingAnim, onMoveChan
     let blackThrowMoves = 0;
 
     if (history.length === 0) {
-        return;
+        return null;
     }
 
     let beforeAnalysis = await analyzePosition(
@@ -80,33 +80,21 @@ export async function EvaluateGame({ worker, history, setLoadingAnim, onMoveChan
         const moveAnalysis = calculateMove(beforeScore, afterScore);
 
         if (moveAnalysis === "cp->cp") {
-            const beforeCenti = normalizeEval(
-                beforeAnalysis.topMoves[0].score.value,
-                move.before
-            );
-            const afterCenti = normalizeEval(
-                afterAnalysis.topMoves[0].score.value,
-                move.after
-            );
-            let centipawnLoss: number;
-
-            if (move.color === "w") {
-                centipawnLoss = Math.max(
-                    0,
-                    beforeCenti - afterCenti
-                );
-            } else {
-                centipawnLoss = Math.max(
-                    0,
-                    afterCenti - beforeCenti
-                );
-            }
-
-            const accuracy =
-                moveAccuracy(centipawnLoss);
             const playedMove = `${move.from}${move.to}${move.promotion ?? ""}`;
+
             const playedBestMove =
                 playedMove === beforeAnalysis.bestMove;
+
+            const beforeChance = winProbability(beforeScore.value);
+            const afterChance = winProbability(-afterScore.value);
+            const loss = Math.max(0, beforeChance - afterChance);
+
+            const bestEval = beforeScore.value;
+            const playedEval = -afterScore.value;
+            const centipawnLoss = Math.max(0, bestEval - playedEval);
+
+            const accuracy = moveAccuracy(centipawnLoss);
+
             // mini helper inside no need to seperate
             function outcome(cp: number) {
                 if (cp >= 200) return "winning";
@@ -125,24 +113,10 @@ export async function EvaluateGame({ worker, history, setLoadingAnim, onMoveChan
 
                 const changesOutcome = outcome(best.score.value) !== outcome(second.score.value);
 
-                // This is to make sure a user isn't already in a completley dominant situation
-                const notAlreadyCompletelyWinning =
-                    best.score.value < 700;
-
                 // Now a exceptions = great (chess.com) is >= 2 1/2 pawns, isnt the same as the second score, and isnt dominant
                 isExceptional =
-                    gap >= 250 &&
-                    changesOutcome &&
-                    notAlreadyCompletelyWinning;
-            }
-            else {
-                if (playedBestMove && (best?.score.type === "cp" && second && second.score.type === "cp")) {
-                    const gap =
-                        best.score.value - second.score.value;
-                    if (gap >= 350) {
-                        isExceptional = true;
-                    }
-                }
+                    best.score.value < 700 &&
+                    (gap >= 350 || (gap >= 250 && changesOutcome));
             }
             if (isExceptional) {
                 if (move.color === "w") {
@@ -154,12 +128,9 @@ export async function EvaluateGame({ worker, history, setLoadingAnim, onMoveChan
             }
             else {
                 // bets possible eval score
-                const bestEval = beforeAnalysis.topMoves[0].score.value;
                 // what the user instead did
-                const playedEval = -afterAnalysis.topMoves[0].score.value;
-
                 const moveJustification =
-                    resolveMoveJustification(bestEval, playedEval, playedBestMove);
+                    resolveMoveJustification(loss, playedBestMove);
 
                 switch (moveJustification) {
                     case "best": {
@@ -226,37 +197,79 @@ export async function EvaluateGame({ worker, history, setLoadingAnim, onMoveChan
         }
         else if (moveAnalysis === "cp->mate") {
             if (afterScore.type === "mate") {
-                const whoGotMate = afterScore.winner;
+                const playedMove = `${move.from}${move.to}${move.promotion ?? ""}`;
+                const playedBestMove = playedMove === beforeAnalysis.bestMove;
 
-                const accuracy =
-                    whoGotMate === move.color
-                        ? 100
-                        : 0;
-                // for ref, if the user moved and let mate occur, its a bludner, else if the user found a move that leads to mate its a exceptional move
-                // which = great in chess.com
-                if (move.color === whoGotMate) {
-                    // moveJustification = exceptional
-                    if (move.color === "w") {
-                        whiteExceptionalMoves += 1
-                    }
-                    else {
-                        blackExceptionalMoves += 1
-                    }
-                }
-                // moveJustification = throw
-                else {
-                    if (move.color === "w") {
-                        whiteThrowMoves += 1
-                    }
-                    else {
-                        blackThrowMoves += 1
-                    }
-                }
+                const beforeChance = winProbability(beforeScore.value);
+                const afterChance = afterScore.winner === move.color ? 1 : 0;
+
+                const loss = Math.max(0, beforeChance - afterChance);
+
+                const accuracy = playedBestMove
+                    ? 100
+                    : 100 * Math.exp(-loss / 0.1);
+
                 if (move.color === "w") {
                     whiteAccuracies.push(accuracy);
                 }
                 else {
                     blackAccuracies.push(accuracy);
+                }
+                const moveJustification = resolveMoveJustification(loss, playedBestMove);
+                switch (moveJustification) {
+                    case "best": {
+                        if (move.color === "w") {
+                            whiteBestMoves += 1;
+                        } else {
+                            blackBestMoves += 1;
+                        }
+                        break;
+                    }
+
+                    case "precise": {
+                        if (move.color === "w") {
+                            whitePreciceMoves += 1;
+                        } else {
+                            blackPreciceMoves += 1;
+                        }
+                        break;
+                    }
+
+                    case "good": {
+                        if (move.color === "w") {
+                            whiteGoodMoves += 1;
+                        } else {
+                            blackGoodMoves += 1;
+                        }
+                        break;
+                    }
+
+                    case "confusing": {
+                        if (move.color === "w") {
+                            whiteConfusingMoves += 1;
+                        } else {
+                            blackConfusingMoves += 1;
+                        }
+                        break;
+                    }
+
+                    case "incorrect": {
+                        if (move.color === "w") {
+                            whiteIncorrectMoves += 1;
+                        } else {
+                            blackIncorrectMoves += 1;
+                        }
+                        break;
+                    }
+
+                    case "throw": {
+                        if (move.color === "w") {
+                            whiteThrowMoves += 1;
+                        } else {
+                            blackThrowMoves += 1;
+                        }
+                        break;
+                    }
                 }
             }
         }
@@ -544,7 +557,7 @@ function gameAccuracy(accuracies: number[]): number {
 
 function resolveLostMateJustification(
     moverEval: number
-): MoveJustifications {
+): MoveClassifications | null {
     if (moverEval <= 0) {
         return "throw";
     }
@@ -571,22 +584,17 @@ function winProbability(cp: number): number {
 
 
 function resolveMoveJustification(
-    bestEval: number,
-    playedEval: number,
+    loss: number,
     playedBestMove: boolean
 ): | "best" | "exceptional" | "precise" | "good" | "confusing" | "incorrect" | "throw" | null {
-    if (playedBestMove){
+    if (playedBestMove) {
         return "best"
     }
-    const before = winProbability(bestEval);
-    const after = winProbability(playedEval);
-
-    const loss = Math.max(0, before - after);
 
     if (loss <= 0.01) return "precise";
-    if (loss <= 0.06) return "good";
-    if (loss <= 0.10) return "confusing";
-    if (loss <= 0.20) return "incorrect";
+    if (loss <= 0.03) return "good";
+    if (loss <= 0.15) return "confusing";
+    if (loss <= 0.30) return "incorrect";
 
     return "throw";
 }

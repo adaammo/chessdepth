@@ -4,12 +4,13 @@ import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Chessboard } from "react-chessboard"
 import { Chess, type Move } from "chess.js"
-import { ChevronLeft, ChevronRight, StepBack, StepForward } from "lucide-react";
+import { ChevronLeft, ChevronRight, LoaderCircle, RotateCcw, StepBack, StepForward } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { createStockfishWorker, EvaluateGame } from "./stockfish";
 import { CustomChessBoard } from "@/src/lib/chess-board-helpers";
 import { DEFAULT_FEN, pieceTypes } from "@/src/lib/constants";
 import { AnalyzedOutput } from "@/src/lib/services/types";
+import ReviewLoadingSidebar from "./ReviewLoading";
 const FIRST_ANIMATION = true;
 
 export default function Review({ game, perspective, pfp_url, move }: { game: GamesDatabase, perspective: string, pfp_url: string, move: number }) {
@@ -18,7 +19,8 @@ export default function Review({ game, perspective, pfp_url, move }: { game: Gam
     const [isAnalyzing, setIsAnalyzing] = useState<boolean>(FIRST_ANIMATION);
     const [analysisFrame, setAnalysisFrame] = useState<{ fen: string, moveIndex: number } | null>(null)
     const [analyzed, setAnalyzed] = useState<AnalyzedOutput | null>(null)
-    console.log(loadingAnim, isAnalyzing)
+    const [analysisError, setAnalysisError] = useState<string | null>(null);
+
     const { history } = useMemo(() => {
         if (!game.pgn) {
             return {
@@ -38,7 +40,10 @@ export default function Review({ game, perspective, pfp_url, move }: { game: Gam
         };
     }, [game.pgn]);
     const fen = currentMove === 0 ? DEFAULT_FEN : history[currentMove - 1].after
-
+    const completedMoves = Math.min(analysisFrame?.moveIndex ?? 0, history.length);
+    const totalFullMoves = Math.ceil(history.length / 2);
+    const currentFullMove = Math.min(totalFullMoves, Math.floor(completedMoves / 2) + 1);
+    const progress = history.length === 0 ? 0 : Math.round((completedMoves / history.length) * 100);
     const displayedMoveIndex =
         isAnalyzing && analysisFrame
             ? analysisFrame.moveIndex
@@ -74,6 +79,9 @@ export default function Review({ game, perspective, pfp_url, move }: { game: Gam
                     setLoadingAnim(DEFAULT_FEN)
                     setIsAnalyzing(false);
                 })
+            if (!res) {
+                setAnalysisError("Something broke with stockfish... please reload.")
+            }
             setAnalyzed(res);
         }
         void analyze();
@@ -231,18 +239,32 @@ export default function Review({ game, perspective, pfp_url, move }: { game: Gam
                 </div>
                 <div className="flex justify-between bg-(--bg-primary) items-center min-w-0 ">
                     <button
+                        disabled = {isAnalyzing}
                         onClick={() => setSideSelect("summary")}
                         className={`flex items-center) justify-center flex-1 font-medium  mx-5 ${sideSelect === "summary" && "bg-(--bg-tertiary) rounded-md cursor-pointer text-(--accent) shadow-xs transition-all duration-300 shadow-black"}`}>
                         Summary
                     </button>
                     <button
+                        disabled = {isAnalyzing}
                         onClick={() => setSideSelect("analysis")}
                         className={`flex items-center) justify-center flex-1 font-medium px-5 mx-5 ${sideSelect === "analysis" && "bg-(--bg-tertiary) text-(--accent) cursor-pointer rounded-md shadow-xs transition-all duration-300 shadow-black"}`}>
                         Analysis
                     </button>
 
                 </div>
-                {sideSelect === "summary" && (
+                {isAnalyzing ? (
+                    <ReviewLoadingSidebar game = {game} completedMoves={completedMoves} totalPlies={history.length} currentFullMove={currentFullMove} totalFullMoves={totalFullMoves} progress={progress} />
+                ) : analysisError ? (
+                    <div className="flex min-h-0 items-center justify-center px-5 py-6" role="alert">
+                        <div className="w-full max-w-sm rounded-xl border border-(--border-default) bg-(--bg-primary) p-6">
+                            <p className="font-semibold text-(--text-primary)">Review unavailable</p>
+                            <p className="mt-2 text-sm text-(--text-secondary)">{analysisError}</p>
+                            <button type="button" onClick={() => window.location.reload()} className="mt-5 inline-flex items-center gap-2 rounded-md bg-(--button-bg) px-3 py-2 text-sm font-semibold text-(--button-text) hover:bg-(--button-hover)">
+                                <RotateCcw className="size-4" aria-hidden="true" /> Try again
+                            </button>
+                        </div>
+                    </div>
+                ) : sideSelect === "summary" && (
                     <div className="flex flex-col min-h-0 overflow-y-auto px-5 py-4 gap-4">
 
                         {/* ACCURACY */}
@@ -362,6 +384,19 @@ export default function Review({ game, perspective, pfp_url, move }: { game: Gam
                                     </span>
                                 </div>
 
+                                <div className="grid grid-cols-[1fr_1.4fr_1fr] items-center px-4 py-2.5">
+                                    <span className="text-sm font-semibold">
+                                        {analyzed?.whiteClassifications.precise}
+                                    </span>
+
+                                    <span className="text-[14px] tracking-[0.12em] text-center font-semibold text-orange-500">
+                                        Precise
+                                    </span>
+
+                                    <span className="text-sm font-semibold text-right">
+                                        {analyzed?.blackClassifications.precise}
+                                    </span>
+                                </div>
 
                                 <div className="grid grid-cols-[1fr_1.4fr_1fr] items-center px-4 py-2.5">
                                     <span className="text-sm font-semibold">
@@ -374,20 +409,6 @@ export default function Review({ game, perspective, pfp_url, move }: { game: Gam
 
                                     <span className="text-sm font-semibold text-right">
                                         {analyzed?.blackClassifications.good}
-                                    </span>
-                                </div>
-
-                                <div className="grid grid-cols-[1fr_1.4fr_1fr] items-center px-4 py-2.5">
-                                    <span className="text-sm font-semibold">
-                                        --
-                                    </span>
-
-                                    <span className="text-[14px] tracking-[0.12em] text-center font-semibold text-(--accent)">
-                                        Theory
-                                    </span>
-
-                                    <span className="text-sm font-semibold text-right">
-                                        --
                                     </span>
                                 </div>
 
@@ -528,7 +549,7 @@ export default function Review({ game, perspective, pfp_url, move }: { game: Gam
                         </div>
                     </div>
                 )}
-                
+
                 <div className="grid grid-cols-4 gap-2 px-3">
                     <button
                         disabled={currentMove === 0 || isAnalyzing}
