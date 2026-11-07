@@ -1,13 +1,13 @@
-import HistoryLoading from "@/src/components/History/HistoryLoading";
+import MainHistoryPage from "@/src/components/History/MainHistoryPage";
 import { notFound } from "next/navigation";
 
-export default async function HistoryPage({params} : {params: Promise<{slug: string}>}){
-    const jobId = (await params).slug;
-    console.log(jobId);
-    if(!jobId){
+export default async function HistoryPage({params, searchParams} : {params: Promise<{slug: string}>, searchParams: Promise<{jobId: string}>}){
+    const slug = (await params).slug;
+    const uuid = (await searchParams).jobId
+    if(!slug){
     notFound();
     }
     return(
-        <HistoryLoading username = {jobId} />
+        <MainHistoryPage slug = {slug} uuid = {uuid}/>
     )
 }

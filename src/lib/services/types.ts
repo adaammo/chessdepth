@@ -1,59 +1,135 @@
+import { OpeningStats, PlayerPayload } from "@/api/lib/types";
+
 export type AnalyzeControllerResponse =
-    {
-        status: "completed";
-        jobId: string;
-        fromCache: true;
-        result: AnalysisReport;
-    }
-    | {
-        status: "processing";
-        jobId: string;
-        fromExistingJob: true;
-        state: "waiting" | "active" | "delayed";
-        result: null;
-    }
-    | {
-        status: "queued";
-        jobId: string;
-        fromExistingJob: false;
-        state: "waiting";
-        result: null;
-    };
+  {
+    status: "completed";
+    username: string,
+    uuid: string
+    result: AnalysisReport;
+  }
+  | {
+    status: "processing";
+    username: string,
+    uuid: string
+    result: null;
+  }
+  | {
+    status: "added";
+    username: string,
+    uuid: string
+    result: null;
+  }
 
 export type AnalysisReport = {
-    username: string,
-    openings: OpeningData[],
-    games: Record<string, GameData>
+  username: string,
+  openings: OpeningData[],
+  games: Record<string, GameData>,
+  profile: PlayerPayload
+  highestSeen: OpeningStats
+  overallWinRate: number
+  bestOutcome: OpeningStats
+  totalGames: number
 }
 
 export type OpeningData = {
-    openingName: string;
-    openingVariation: string;
-    ecoUrl: string | null;
-  
-    games: number;
-    wins: number;
-    losses: number;
-    draws: number;
-  
-    score: number;
-    scorePercent: number;
-  
-    gameIds: string[];
-  };
-  export type GameData = {
-    url: string;
-    pgn: string;
-  
-    userColor: "white" | "black";
-    result: "win" | "loss" | "draw"
-  
-    openingName: string;
-    openingVariation: string;
-    ecoUrl: string | null;
-  
-    timeClass: string;
-    timeControl: string;
-  
-    chessComAccuracy?: number;
-  };
+  openingName: string;
+  openingVariations: Set<string>
+  ecoUrl: string | null;
+
+  white: {
+    whiteScore: number;
+    whitePercentage: number;
+    whiteGames: number,
+    whiteWins: number,
+    whiteLosses: number,
+    whiteDraws: number
+  }
+  black: {
+    blackScore: number;
+    blackPercentage: number;
+    blackGames: number,
+    blackWins: number,
+    blackLosses: number,
+    blackDraws: number
+  }
+};
+
+export type GameData = {
+  url: string;
+  pgn: string;
+
+  userColor: "white" | "black";
+  result: "win" | "loss" | "draw"
+  opponentUsername: string
+  date: number;
+  fen: string
+  openingName: string;
+  openingVariation: string;
+  ecoUrl: string | null;
+
+  timeClass: string;
+  timeControl: string;
+
+  chessComAccuracy?: number | undefined;
+};
+
+export type OpeningExplorerGameColor = "white" | "black";
+
+export interface OpeningExplorerGamePlayer {
+  name: string;
+  rating: number;
+}
+interface OpeningExplorerOpening {
+  eco: string;
+  name: string;
+}
+interface OpeningExplorerMastersGame {
+  black: OpeningExplorerGamePlayer;
+  id: string;
+  white: OpeningExplorerGamePlayer;
+  winner: OpeningExplorerGameColor | null;
+  year: number;
+  month: string;
+}
+
+interface OpeningExplorerMove {
+  averageRating: number;
+  black: number;
+  draws: number;
+  game: OpeningExplorerMastersGame | null;
+  opening: OpeningExplorerOpening | null;
+  san: string;
+  uci: string;
+  white: number;
+}
+
+interface OpeningExplorerTopGame {
+  black: OpeningExplorerGamePlayer;
+  id: string;
+  uci: string;
+  white: OpeningExplorerGamePlayer;
+  winner: OpeningExplorerGameColor | null;
+  year: number;
+  month: string;
+}
+
+export interface OpeningExplorerMastersResponse {
+  black: number;
+  draws: number;
+  moves: OpeningExplorerMove[];
+  opening: OpeningExplorerOpening | null;
+  topGames: OpeningExplorerTopGame[];
+  white: number;
+}
+
+export type MoveClassifications = "exceptional" | "best" | "precise" | "good" | "confusing" | "incorrect" | "throw"
+
+
+type ClassificationCounts = Record<MoveClassifications, number>;
+
+export type AnalyzedOutput = {
+    whiteAccuracy: number;
+    blackAccuracy: number;
+    whiteClassifications: ClassificationCounts;
+    blackClassifications: ClassificationCounts;
+};

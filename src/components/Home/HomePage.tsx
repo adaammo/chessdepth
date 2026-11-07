@@ -1,7 +1,7 @@
 "use client"
 import { AnimatePresence, motion } from "motion/react";
 import { useState, useTransition } from "react";
-import { PostChessUsername } from "@/src/lib/services/analyze";
+import { PostChessUsername } from "@/src/lib/services/api-functions";
 import SuccessToast from "../toasts/SuccessToast";
 import { useRouter } from "next/navigation";
 export default function HomePage() {
@@ -11,7 +11,7 @@ export default function HomePage() {
     const [text, setText] = useState<string>("");
     const router = useRouter();
     return (
-        <div className="relative flex min-h-screen min-w-screen flex-col items-center justify-center overflow-hidden px-6">
+        <div className="relative flex min-h-screen w-full max-w-screen flex-col items-center justify-center overflow-hidden px-6">
             <motion.div
                 animate={{ opacity: [0.12, 0.22, 0.12] }}
                 transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
@@ -49,12 +49,20 @@ export default function HomePage() {
                             const formData = new FormData(e.currentTarget);
                             const { username } = Object.fromEntries(formData.entries());
                             const res = await PostChessUsername(username as string);
-                            if (!res?.ok) {
-                                return setError(res.msg)
+                            if (res.status === "failed") {
+                                return setError(res.failedReason)
                             }
-                            setText(res.msg)
-                            setSuccess(true);
-                            router.push(`/history/${res.jobId}`);
+                            if (res.status === "added") {
+                                setText(res.msg)
+                                setSuccess(true);
+                                const username = res.username;
+                                const uuid = res.uuid;
+                                return router.push(`/history/${username}?jobId=${uuid}`);
+                            }
+                            if(res.status === "completed"){
+                                const uuid = res.uuid;
+                                router.push(`/history/${username}?jobId=${uuid}?completed=true`);
+                            }
                             return;
                         })
                     }}
@@ -78,9 +86,9 @@ export default function HomePage() {
 
                     <button
                         type="submit"
-                        className="w-full cursor-pointer rounded-xl border border-(--border-default) bg-(--button-primary-bg) py-3 font-bold text-black transition duration-300 hover:opacity-80">
+                        className="w-full cursor-pointer rounded-xl border border-(--border-default) bg-(--button-bg) py-3 font-bold text-black transition duration-300 hover:opacity-80">
                         {isPending ? (
-                            <span className="loading loading-lg loading-dots" />
+                            <span className="loading loading-lg loading-dots cursor-pointer" />
                         ) : (
                             "Analyze Opening"
                         )}

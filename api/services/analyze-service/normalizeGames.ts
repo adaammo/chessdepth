@@ -1,77 +1,182 @@
-import { ChessGame, GameData, OpeningData } from "../../lib/types";
+import { PLAYER_URL, STATS_URL } from "../../lib/constants"
+import { ChessComPlayerResult, ChessGame, GameData, OpeningData, OpeningStats, PlayerPayload } from "../../lib/types";
 import { ecoRegexHelper, getGameOutcome, getOpeningKey, getOutcomeScore } from "./helpers";
+import { getPlayersProfile } from "./archives";
 
 export type AnalysisReport = {
     username: string,
     openings: OpeningData[],
-    games: Record<string, GameData>
+    games: Record<string, GameData>,
+    profile: PlayerPayload
+    highestSeen: OpeningStats
+    overallWinRate: number
+    bestOutcome: OpeningStats
+    totalGames: number
 }
+type ChessCoachId =| 'coach-david'| 'coach-mae'| 'coach-levy'| 'coach-magnus'| 'coach-hikaru'| 'coach-danny'| 'coach-anna'| 'coach-alexandra'| 'coach-andrea';
+const CHESS_COACH_IDS = new Set(['coach-david','coach-mae','coach-levy','coach-magnus','coach-hikaru','coach-danny','coach-anna','coach-alexandra','coach-andrea',]);
 
-
-export async function NormalizationOfGames(games: ChessGame[], username: string) : Promise<AnalysisReport> {
+export async function NormalizationOfGames(games: ChessGame[], username: string): Promise<AnalysisReport> {
     const openingStats = new Map<string, OpeningData>();
     const gameStats = new Map<string, GameData>();
+    const profileQuery = await getPlayersProfile(PLAYER_URL(username), STATS_URL(username));
+    let mostSeenOpeningCount = 0;
+    let mostSeenOpeningName = "";
+    let bestOutcomeOpening = "";
+    let bestOutcomeWinRate = 0;
+    let winRate = 0;
+    if (!profileQuery) {
+        throw new Error("PLAYER_PROFILE_NOT_FOUND");
+    }
+    const profile: PlayerPayload = { username: profileQuery.username, avatar: profileQuery.avatar, stats: profileQuery.stats };
+    let totalGames = 0;
     for (const game of games) {
+        // skip coaches, the api response dosnt give opening or time rating or any information for such games
+
+        if(CHESS_COACH_IDS.has(game.black.username.toLocaleLowerCase()) || CHESS_COACH_IDS.has(game.white.username.toLocaleLowerCase())){
+            continue;
+        }
         const isWhite = game.white.username.toLowerCase() === username.toLowerCase();
+        const userColor = isWhite ? "white" : "black";
         const playerResult = isWhite ? game.white.result : game.black.result;
         const outcome = getGameOutcome(playerResult);
         const score = getOutcomeScore(outcome);
         const openingKey = getOpeningKey(game.eco ?? "");
-        const {family, variation} = ecoRegexHelper(openingKey)
-        if(!gameStats.has(game.uuid)){
-            const userColor = isWhite ? "white" : "black";
-            const result = score === 1 ? "win" : score === 0.5 ? "draw" : "loss";
+        const { family, variation } = ecoRegexHelper(openingKey)
+        winRate += score;
+        if (!gameStats.has(game.uuid)) {
+            const result =
+            score === 0.5
+                ? "draw"
+                : score === 1
+                    ? (userColor === "white" ? "white_won" : "black_won")
+                    : (userColor === "white" ? "black_won" : "white_won")
+
             const timeClass = game.time_class
             const timeControl = game.time_control;
-            const chessComAccuracy = (userColor === "white" ? game.accuracies?.white : game.accuracies?.black) ?? 0;
+            const chessComAccuracy = (userColor === "white" ? game.accuracies?.white : game.accuracies?.black)
+            const date = game.start_time ? game.start_time : game.end_time;
             gameStats.set(game.uuid, {
+                id: game.uuid,
                 url: game.url,
                 pgn: game.pgn,
+                white_username: game.white.username,
+                black_username: game.black.username,
                 userColor,
                 result,
+                fen: game.fen,
                 timeClass,
                 timeControl,
+                date,
                 chessComAccuracy,
                 openingName: family,
                 openingVariation: variation,
-                ecoUrl: game.eco ?? "Opening Unknown"
-            })
+                ecoUrl: game.eco ?? "Opening Unknown",
+                white_rating: game.white.rating,
+                black_rating: game.black.rating,
+                white_ending: game.white.result as ChessComPlayerResult,
+                black_ending: game.black.result as ChessComPlayerResult,
 
-        }
-        if (!openingStats.has(openingKey)) {
-            openingStats.set(openingKey, {
-              ecoUrl: game.url,
-              wins: 0,
-              games: 0,
-              draws: 0,
-              losses: 0,
-              scorePercent: 0,
-              gameIds: [],
-              openingName: family,
-              openingVariation: variation,
-              score: 0,
             });
-          }
-        const opening = openingStats.get(openingKey)!;
-        opening.games += 1;
-        opening.score += score;
-        opening.gameIds.push(game.uuid);
-
-        if (outcome === "win") {
-            opening.wins += 1;
-        } else if (outcome === "draw") {
-            opening.draws += 1;
-        } else {
-            opening.losses += 1;
         }
-        opening.scorePercent = Number(
-            ((opening.score / opening.games) * 100).toFixed(2)
-        );
+        if (!openingStats.has(family)) {
+            openingStats.set(family, {
+                ecoUrl: game.url,
+                white: {
+                    whitePercentage: 0,
+                    whiteDraws: 0,
+                    whiteGames: 0,
+                    whiteLosses: 0,
+                    whiteScore: 0,
+                    whiteWins: 0
+                },
+                black: {
+                    blackPercentage: 0,
+                    blackDraws: 0,
+                    blackGames: 0,
+                    blackLosses: 0,
+                    blackScore: 0,
+                    blackWins: 0,
+                },
+
+                openingName: family,
+                openingVariations: new Set<string>()
+            });
+        }
+        totalGames++;
+        const opening = openingStats.get(family)!;
+        opening.openingVariations.add(variation);
+        if (opening.white.whiteGames + opening.black.blackGames > mostSeenOpeningCount) {
+            mostSeenOpeningCount = opening.white.whiteGames + opening.black.blackGames;
+            mostSeenOpeningName = opening.openingName;
+        }
+        if (userColor === "white") {
+            opening.white.whiteGames += 1;
+            opening.white.whiteScore += score;
+            if (outcome === "win") {
+                opening.white.whiteWins += 1;
+            } else if (outcome === "draw") {
+                opening.white.whiteDraws += 1;
+            } else {
+                opening.white.whiteLosses += 1;
+            }
+            opening.white.whitePercentage = Number(
+                ((opening.white.whiteScore / opening.white.whiteGames) * 100).toFixed(2)
+            );
+        }
+        else {
+            opening.black.blackGames += 1;
+            opening.black.blackScore += score;
+            if (outcome === "win") {
+                opening.black.blackWins += 1;
+            } else if (outcome === "draw") {
+                opening.black.blackDraws += 1;
+            } else {
+                opening.black.blackLosses += 1;
+            }
+            opening.black.blackPercentage = Number(
+                ((opening.black.blackScore / opening.black.blackGames) * 100).toFixed(2)
+            );
+        }
     }
+
     const openings = [...openingStats.values()];
+    
+    for (const opening of Object.values(openings)) {
+        const totalGames =
+            opening.white.whiteGames +
+            opening.black.blackGames;
+    
+        if (totalGames < 10) {
+            continue;
+        }
+    
+        const totalScore =
+            opening.white.whiteScore +
+            opening.black.blackScore;
+    
+        const scorePercentage = totalScore / totalGames;
+    
+        if (scorePercentage > bestOutcomeWinRate) {
+            bestOutcomeWinRate = scorePercentage;
+            bestOutcomeOpening = opening.openingName;
+        }
+    }
     return {
         username: username,
         openings,
-        games: Object.fromEntries(gameStats.entries())
+        games: Object.fromEntries(gameStats.entries()),
+        profile,
+        highestSeen: {
+            openingName: mostSeenOpeningName,
+            count: mostSeenOpeningCount
+        },
+        overallWinRate: (winRate / totalGames),
+        bestOutcome: {
+            openingName: bestOutcomeOpening,
+            count: bestOutcomeWinRate
+        },
+        totalGames
     }
 }
+

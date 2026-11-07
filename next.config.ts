@@ -1,7 +1,14 @@
 import type { NextConfig } from "next";
+import { URL } from "url";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  images: {
+    remotePatterns: [{
+      protocol: "https",
+      hostname: "images.chesscomfiles.com",
+    }
+    ]
+  }
 };
 
 export default nextConfig;
